@@ -1,0 +1,11 @@
+<div class="PageDoc"><div class="header">
+  <table cellpadding="10"> <tr> <td> <div class="headertitle">    
+      <div class="title">Installation </div>
+      </div></td>
+      <td> &nbsp;&nbsp;&nbsp;&nbsp;</td>
+      <td> <button class="TopMenuButton"><div><a href="#GettingStarted">Getting started</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#HeaderFiles">Header files</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#CompiledLibrary">Compiled Library</a></div></button></td>
+    </tr>
+    </table>
+</div><!--header-->

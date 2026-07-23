@@ -1,0 +1,23 @@
+<div class="PageDoc"><div class="header">
+  <table cellpadding="10"> <tr> <td> <div class="headertitle">    
+      <div class="title">Direct solvers </div>
+      </div></td>
+      <td> &nbsp;&nbsp;&nbsp;&nbsp;</td>
+      <td> <button class="TopMenuButton"><div><a href="#ExternalSolvers">Installation</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#BasicUse">Basic use</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#AdvancedUse">Advanced use</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#SparseDirectSolver">SparseDirectSolver</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#SparseCholeskySolver">SparseCholeskySolver</a></div></button></td> </tr>
+      </table>
+   <table cellpadding="10">
+      <tr> <td><div class="headertitle"> </div> </td>
+            <td> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+            <td> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+            <td> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+      <td> <button class="TopMenuButton"><div><a href="#SparseDistributedSolver">SparseDistributedSolver</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#DistributedCholeskySolver">DistributedCholeskySolver</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#VirtualSparseDirectSolver">Methods</a></div></button></td>
+       <td> <button class="TopMenuButton"><div><a href="#Functions">Functions</a></div></button></td>
+    </tr>
+    </table>
+</div><!--header-->

@@ -1,0 +1,11 @@
+<div class="PageDoc"><div class="header">
+  <table cellpadding="10"> <tr> <td> <div class="headertitle">    
+      <div class="title">Dense Matrices </div>
+      </div></td>
+      <td> &nbsp;&nbsp;&nbsp;&nbsp;</td>
+      <td> <button class="TopMenuButton"><div><a href="#MatrixRowMajor">Methods</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#VirtualMatrixConcept">VirtualMatrix</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#Functions">Functions</a></div></button></td>
+    </tr>
+    </table>
+</div><!--header-->

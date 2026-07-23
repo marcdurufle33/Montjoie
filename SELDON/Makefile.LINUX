@@ -1,0 +1,376 @@
+# put YES to compile in optimize mode, NO to compile in debug mode
+# FAST for a fast compilation (a library is generated), TEST for fast compilation in debug mode
+OPTIMIZATION := FAST
+STATIC_COMPILATION := YES
+
+# First we list all external libraries that you want to use with Seldon
+# The directories DIR_CBLAS, DIR_MUMPS, etc are given below this list
+
+# put YES if you want to use Blas and Lapack, NO otherwise
+# Modify DIR_CBLAS to indicate the directory where Cblas is compiled (file libcblas.a or libcblas.so)
+USE_BLAS := YES
+
+# use of direct solver Mumps
+# Modify DIR_MUMPS to indicate the directory where Mumps is compiled
+# in parallel, you need to modify DIR_BLACS and DIR_SCALAPACK
+USE_MUMPS := YES
+
+# use of direct solver Pardiso (included with Mkl)
+USE_PARDISO := NO
+
+# use of direct solver Pastix (in parallel only)
+# Modify DIR_PASTIX to indicate the directory where Pastix is built
+# you need to modify DIR_SCOTCH or DIR_METIS
+USE_PASTIX := NO
+
+# use of arpack
+# Modify DIR_ARPACK to indicate the directory where Arpack is compiled
+USE_ARPACK := YES
+
+# using feast ?
+# Modify DIR_FEAST to indicate the directory where Feast is compiled
+USE_FEAST := YES
+
+# use of slepc (in parallel only)
+# the directories are given by variable environments SLEPC_DIR, PETSC_DIR and PETSC_ARCH
+USE_SLEPC := YES
+
+# use of OpenMP ?
+USE_OPENMP := NO
+
+# use of MPI
+USE_MPI := YES
+
+# use of MKL
+USE_MKL := NO
+
+# alternative direct solvers
+# Modify directories DIR_SUPERLU_* or DIR_SUITE_SPARSE
+USE_UMFPACK := NO
+USE_SUPERLU := NO
+USE_CHOLMOD := YES
+USE_WSMP := NO
+
+# Hypre preconditioning
+# Modify directory DIR_HYPRE
+USE_HYPRE := YES
+
+# YES to display compilation commands
+USE_VERBOSE := YES
+
+FLAGS := -Wall -Wextra -Wno-deprecated -Wno-strict-overflow -fno-strict-overflow -Wno-unused-parameter -Wno-unknown-pragmas -ftemplate-depth-5000 -Woverloaded-virtual
+
+# always compiling with openmp actually...
+# USE_OPENMP is used to distinguish SuperLU versions
+FLAGS := -fopenmp $(FLAGS)
+
+# directory where Seldon is
+DIR_SELDON := ./
+
+# default file to compile
+#LSTBIN = test/program/simple_test.cpp
+LSTBIN = test/unit/eigenvalue_feast.cc
+
+# default executable file
+BIN = test/test.x
+
+# directory where external libraries are installed
+EXTERNAL := /home/durufle/Solve
+
+# directory where Cblas is compiled
+DIR_CBLAS := $(EXTERNAL)/CBLAS
+
+# directory where Mkl is present
+DIR_MKL = /opt/intel/composer_xe_2021/mkl
+
+# directory where Arpack is installed
+DIR_ARPACK := $(EXTERNAL)/Parpack
+
+# directory for Blacs/Scalapack (needed for Mumps)
+DIR_BLACS := $(EXTERNAL)/BLACS
+DIR_SCALAPACK := $(EXTERNAL)/scalapack-2.0.2
+
+# directory where Mumps is installed
+DIR_MUMPS_SEQ := $(EXTERNAL)/MUMPS_5.4.0_SEQ
+DIR_MUMPS_PAR := $(EXTERNAL)/MUMPS_5.4.0
+
+# directory where Scotch is installed
+DIR_SCOTCH := $(EXTERNAL)/scotch-v6.1.0
+
+# directory where Metis is installed 
+DIR_METIS := $(EXTERNAL)/metis-5.1.0
+
+# directory where ParMetis is installed
+DIR_PARMETIS := $(EXTERNAL)/parmetis-4.0.3
+
+# directory where Pastix is installed
+DIR_PASTIX := $(EXTERNAL)/pastix_6.2.0/
+
+# directory for alternative direct solvers
+DIR_SUPERLU := $(EXTERNAL)/superlu-5.2.2
+DIR_SUPERLU_MT := $(EXTERNAL)/SuperLU_MT_3.0
+DIR_SUPERLU_DIST := $(EXTERNAL)/superlu_dist-7.0.0
+DIR_SUITE_SPARSE := $(EXTERNAL)/SuiteSparse-5.10.0
+DIR_WSMP := $(EXTERNAL)/wsmp/wsmp-Linux64-GNU/lib
+
+# for Hypre
+DIR_HYPRE := $(EXTERNAL)/hypre-master/src/hypre
+
+# for Feast (we assume that arch is x64)
+DIR_FEAST := $(EXTERNAL)/Feast4/
+
+# directories where files .h and . hxx are sought
+INCLUDE := -I$(DIR_SELDON)
+
+USE_METIS := NO
+USE_SCALAPACK := NO
+
+# using scotch ?
+ifeq ($(USE_PASTIX),YES)
+USE_SCOTCH := YES
+endif
+
+ifeq ($(USE_MPI),YES)
+ifeq ($(USE_MUMPS),YES)
+USE_SCOTCH := YES
+USE_SCALAPACK := YES
+endif
+endif
+
+# using metis
+ifeq ($(USE_MUMPS),YES)
+USE_METIS := YES
+endif
+
+ifeq ($(USE_CHOLMOD),YES)
+USE_METIS := YES
+endif
+
+ifeq ($(USE_UMFPACK),YES)
+USE_METIS := YES
+endif
+
+# using ParMetis ?
+USE_PARMETIS := NO
+ifeq ($(USE_MPI),YES)
+
+ifeq ($(USE_MUMPS),YES)
+USE_PARMETIS := YES
+endif
+
+ifeq ($(USE_SUPERLU),YES)
+USE_PARMETIS := YES
+endif
+
+endif
+
+# using Cholmod ?
+ifeq ($(USE_UMFPACK),YES)
+# Cholmod already included in UmfPack
+USE_CHOLMOD := NO
+endif
+
+# used compilers
+ifeq ($(USE_MPI),YES)
+  CC = mpicxx
+  FCC = mpif90
+  INCLUDE:= $(INCLUDE)
+  # -lmpi_f77 instead of -lmpi_mpifh (depending on the MPI compiler)
+  LIB := -lhwloc -lgfortran -lmpi_mpifh
+  FLAGS := $(FLAGS) -DSELDON_WITH_MPI
+else
+  CC = g++
+  FCC = gfortran
+  INCLUDE:= $(INCLUDE)
+  LIB := -lgfortran
+endif
+
+# etime for Arpack
+LIB := lib/etime.o $(LIB)
+
+# if Blas and Lapack are needed
+ifeq ($(USE_BLAS),YES)
+  # user-compiled Blas/Lapack
+  LIB := -L$(DIR_CBLAS) -lcblas -llapack -lblas $(LIB)
+  #LIB := $(EXTERNAL)/lapack-3.5.0/liblapack.a $(DIR_CBLAS)/libcblas.a $(EXTERNAL)/BLAS-3.5.0/libblas.a $(LIB) 
+
+  # Blas/Lapack can also be provided by MKL
+  #LIB := -L$(DIR_MKL)/lib/ia32 -lmkl_lapack95 -lmkl_gf -lmkl_gnu_thread -lmkl_core $(LIB)
+
+  ifeq ($(USE_MKL),YES)
+    FLAGS := $(FLAGS) -DSELDON_WITH_MKL -DSELDON_WITH_FEAST
+    INCLUDE := $(INCLUDE) -I$(DIR_MKL)/include/
+  endif
+
+  FLAGS := $(FLAGS) -DSELDON_WITH_CBLAS -DSELDON_WITH_LAPACK
+endif
+
+# if Scalapack/Blacs are needed (usually for Mumps)
+ifeq ($(USE_SCALAPACK),YES)
+  LIB := -L$(DIR_SCALAPACK) -lscalapack -L$(DIR_BLACS) -lblacs $(LIB) 
+endif
+
+# if Hypre is needed
+ifeq ($(USE_HYPRE),YES)
+  FLAGS := $(FLAGS) -DSELDON_WITH_HYPRE
+  INCLUDE := $(INCLUDE) -I$(DIR_HYPRE)/include
+  LIB := $(LIB) -L$(DIR_HYPRE)/lib -lHYPRE
+endif
+
+# if Arpack is needed
+ifeq ($(USE_ARPACK),YES)
+   FLAGS := $(FLAGS) -DSELDON_WITH_ARPACK
+   ifeq ($(USE_MPI),YES)
+      LIB := -L$(DIR_ARPACK) -lparpack -larpack $(LIB)
+   else
+      LIB := -L$(DIR_ARPACK) -larpack $(LIB)
+   endif
+endif
+
+# if feast is needed
+ifeq ($(USE_FEAST),YES)
+  FLAGS := $(FLAGS) -DSELDON_WITH_FEAST
+  INCLUDE := $(INCLUDE) -I$(DIR_FEAST)/include
+  ifeq ($(USE_MPI),YES)
+    LIB := -L$(DIR_FEAST)/lib/x64 -lpfeast $(LIB)
+  else
+    LIB := -L$(DIR_FEAST)/lib/x64 -lfeast $(LIB)
+  endif
+endif
+
+# if Slepc is needed
+ifeq ($(USE_SLEPC),YES)
+   FLAGS := $(FLAGS) -DSELDON_WITH_SLEPC
+   INCLUDE := $(INCLUDE) -I$(SLEPC_DIR)/$(PETSC_ARCH)/include -I$(SLEPC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include -I$(PETSC_DIR)/include
+   LIB := -L$(SLEPC_DIR)/$(PETSC_ARCH)/lib -lslepc -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc $(LIB)
+endif
+
+# if Scotch is needed
+ifeq ($(USE_SCOTCH),YES)
+  INCLUDE := -I$(DIR_SCOTCH)/include $(INCLUDE)
+  LIB := -L$(DIR_SCOTCH)/lib -lptesmumps -lesmumps -lptscotch -lptscotcherr -lptscotchparmetis -lscotch -lscotcherr $(LIB) 
+  FLAGS := $(FLAGS) -DMONTJOIE_WITH_SCOTCH
+endif
+
+# if Metis is needed
+ifeq ($(USE_METIS),YES)
+  LIB := -L$(DIR_METIS) -lmetis $(LIB)
+endif
+
+# if ParMetis is needed
+ifeq ($(USE_PARMETIS),YES)
+  LIB := -L$(DIR_PARMETIS) -lparmetis $(LIB)
+endif
+
+# if Cholmod is needed
+ifeq ($(USE_CHOLMOD),YES)
+  LIB := -L$(DIR_SUITE_SPARSE)/CHOLMOD/Lib -lcholmod -L$(DIR_SUITE_SPARSE)/AMD/Lib -lamd -L$(DIR_SUITE_SPARSE)/COLAMD/Lib -lcolamd \
+          -L$(DIR_SUITE_SPARSE)/CAMD/Lib -lcamd -L$(DIR_SUITE_SPARSE)/CCOLAMD/Lib -lccolamd -L$(DIR_SUITE_SPARSE)/SuiteSparse_config -lsuitesparseconfig $(LIB)
+  INCLUDE := -I$(DIR_SUITE_SPARSE)/CHOLMOD/Include -I$(DIR_SUITE_SPARSE)/SuiteSparse_config $(INCLUDE)
+  FLAGS := $(FLAGS) -DSELDON_WITH_CHOLMOD
+endif
+
+# if UmfPack with Cholmod is needed
+ifeq ($(USE_UMFPACK),YES)
+  LIB_COLAMD :=
+  INC_COLAMD := -I$(DIR_SUITE_SPARSE)/COLAMD/Include
+  ifeq ($(USE_SUPERLU),NO)
+    LIB_COLAMD := -L$(DIR_SUITE_SPARSE)/COLAMD/Lib -lcolamd 
+  endif
+  ifeq ($(USE_MPI),YES)
+    LIB_COLAMD := -L$(DIR_SUITE_SPARSE)/COLAMD/Lib -lcolamd 
+  endif
+  LIB := -L$(DIR_SUITE_SPARSE)/UMFPACK/Lib -lumfpack -L$(DIR_SUITE_SPARSE)/CHOLMOD/Lib -lcholmod -L$(DIR_SUITE_SPARSE)/AMD/Lib -lamd \
+        -L$(DIR_SUITE_SPARSE)/CAMD/Lib -lcamd $(LIB_COLAMD) \
+	-L$(DIR_SUITE_SPARSE)/CCOLAMD/Lib -lccolamd -L$(DIR_SUITE_SPARSE)/SuiteSparse_config -lsuitesparseconfig $(LIB)
+  INCLUDE := -I$(DIR_SUITE_SPARSE)/AMD/Include -I$(DIR_SUITE_SPARSE)/CAMD/Include $(INC_COLAMD) \
+             -I$(DIR_SUITE_SPARSE)/CHOLMOD/Include -I$(DIR_SUITE_SPARSE)/UMFPACK/Include -I$(DIR_SUITE_SPARSE)/SuiteSparse_config $(INCLUDE)
+  FLAGS := $(FLAGS) -DSELDON_WITH_UMFPACK -DSELDON_WITH_CHOLMOD
+endif
+
+# if SuperLU is needed
+ifeq ($(USE_SUPERLU),YES)
+  ifeq ($(USE_MPI),YES)
+    LIB := $(DIR_SUPERLU_DIST)/libsuperlu_dist.a $(LIB) 
+    INCLUDE := -I$(DIR_SUPERLU_DIST)/SRC $(INCLUDE)
+    FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU -DSELDON_WITH_SUPERLU_DIST
+  else
+    ifeq ($(USE_OPENMP),YES)
+      LIB := $(DIR_SUPERLU_MT)/libsuperlu_mt_PTHREAD.a $(LIB) 
+      INCLUDE := -I$(DIR_SUPERLU_MT)/SRC $(INCLUDE)
+      FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU -DSELDON_WITH_SUPERLU_MT
+    else
+      LIB := $(DIR_SUPERLU)/libsuperlu.a $(LIB) 
+      INCLUDE := -I$(DIR_SUPERLU)/SRC $(INCLUDE)
+      FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU
+    endif
+  endif
+endif
+
+ifeq ($(USE_WSMP),YES)
+  ifeq ($(USE_MPI),YES)
+    LIB := $(DIR_WSMP)/mvapich2/libpwsmp64.a $(LIB)
+  else
+    LIB := $(DIR_WSMP)/libwsmp64.a $(LIB)
+  endif
+  FLAGS := $(FLAGS) -DSELDON_WITH_WSMP
+endif
+
+# if MUMPS is needed
+ifeq ($(USE_MUMPS),YES)
+  # MUMPS compiled with Gfortran
+  ifeq ($(USE_MPI),YES)
+     INCLUDE := -I$(DIR_MUMPS_PAR)/include $(INCLUDE)
+     LIB := -L$(DIR_MUMPS_PAR)/lib -ldmumps -lzmumps -lmumps_common -lpord $(LIB)
+  else
+    INCLUDE := -I$(DIR_MUMPS_SEQ)/include -I$(DIR_MUMPS_SEQ)/libseq $(INCLUDE)
+    LIB := -L$(DIR_MUMPS_SEQ)/lib -ldmumps -lzmumps -lmumps_common -lpord \
+    -L$(DIR_MUMPS_SEQ)/libseq -lmpiseq -L$(HOME)/common/lib $(LIB)
+  endif
+  FLAGS := $(FLAGS) -DSELDON_WITH_MUMPS
+endif
+
+# if PARDISO is needed
+ifeq ($(USE_PARDISO),YES)
+  # We use pardiso included in MKL
+  FLAGS := $(FLAGS) -DSELDON_WITH_PARDISO
+endif
+
+# if Pastix is needed
+ifeq ($(USE_PASTIX),YES)
+  INCLUDE := -I$(DIR_PASTIX)/install/inslude $(INCLUDE)
+  LIB := -L$(DIR_PASTIX)/install/lib -lpastix -lspm -lpastix_kernels -llapacke $(LIB)
+  FLAGS := $(FLAGS) -DSELDON_WITH_PASTIX
+endif
+
+FLAGS_LIB := $(FLAGS) -fPIC
+FLAGS_OBJ := $(FLAGS) -fPIC
+SEPARED_COMPIL := NO
+
+ifeq ($(OPTIMIZATION),NO)
+  # options for debug mode
+  AGRESSIVE_OPTIM = -g
+  FLAGS := $(FLAGS) -DSELDON_DEBUG_LEVEL_4
+else ifeq ($(OPTIMIZATION),FAST)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY
+  SELD_SUFFIX := _Sopt
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1
+else ifeq ($(OPTIMIZATION),TEST)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY
+  SELD_SUFFIX := _Sdebug
+  AGRESSIVE_OPTIM = -O0 -DSELDON_DEBUG_LEVEL_4 -g
+else
+  # option for optimization mode
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1
+endif
+
+ifeq ($(SEPARED_COMPIL),YES)
+  LIB_SELDON_STATIC := lib/libseldon$(SELD_SUFFIX).a
+  LIB_SELDON := lib/libseldon$(SELD_SUFFIX).so
+endif
+
+# now lists of all targets
+
+include Makefile.rules.mk

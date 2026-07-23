@@ -1,0 +1,865 @@
+/*! \file exceptions.dox
+    \brief Exceptions.
+*/
+
+/*!
+\page exceptions Exceptions
+
+<h2>Options</h2>
+
+<p>Exceptions are raised if an error is detected. %Seldon is able to check for several mistakes:</p>
+
+<ul>
+
+  <li>SELDON_CHECK_IO: checks input/output operations on disk.</li>
+
+  <li>SELDON_CHECK_MEMORY: checks memory allocations and deallocations.</li>
+
+  <li>SELDON_CHECK_DIMENSIONS: checks that the dimensions of involved structures are compatible. Notice that there are methods in which the compatibility is not checked however.</li>
+
+  <li>SELDON_CHECK_BOUNDS: checks that indices are not out of range.</li>
+
+</ul>
+
+<p>To enable <code>SELDON_CHECK_MEMORY</code>, for example, put (before <code>\#include &lt;Seldon.hxx&gt;</code>):</p>
+
+\precode #define SELDON_CHECK_MEMORY\endprecode
+
+<p>Alternatively, there are debug levels:</p>
+
+<ul>
+
+  <li>SELDON_DEBUG_LEVEL_0: nothing is checked.</li>
+
+  <li>SELDON_DEBUG_LEVEL_1: equivalent to SELDON_CHECK_IO plus SELDON_CHECK_MEMORY.</li>
+
+  <li>SELDON_DEBUG_LEVEL_2: equivalent to SELDON_DEBUG_LEVEL_1 plus SELDON_CHECK_DIMENSIONS.</li>
+
+  <li>SELDON_DEBUG_LEVEL_3: equivalent to SELDON_DEBUG_LEVEL_2 plus SELDON_CHECK_BOUNDS.</li>
+
+  <li>SELDON_DEBUG_LEVEL_4: equivalent to SELDON_DEBUG_LEVEL_3.</li>
+
+</ul>
+
+<p>In practice, it is advocated to choose SELDON_DEBUG_LEVEL_4 in the development stage and SELDON_DEBUG_LEVEL_2 for the stable version. Indeed SELDON_DEBUG_LEVEL_4 slows down the program but checks many things and SELDON_DEBUG_LEVEL_2 should not slow down the program and ensures that it is reasonably safe.</p>
+
+<p>Development stage:</p>
+\precode #define SELDON_DEBUG_LEVEL_4\endprecode
+
+<p>Stable version:</p>
+\precode #define SELDON_DEBUG_LEVEL_2\endprecode
+
+<a name="CatchExceptions"></a>
+<h2>Exceptions raised</h2>
+
+<p>The objects that may be launched by %Seldon are of type: <code>WrongArgument</code>, <code>NoMemory</code>, <code>WrongDim</code>, <code>WrongIndex</code>, <code>WrongRow</code>, <code>WrongCol</code>, <code>IOError</code> and <code>LapackError</code>. They all derive from <code>Error</code>. They provide the method <code>What</code> that returns a string explaining the error, and the method <code>CoutWhat</code> that displays on screen this explanation. Therefore, to catch an exception raised by %Seldon, put:</p>
+
+\precode catch(Seldon::Error& Err)
+{
+Err.CoutWhat();
+}\endprecode
+
+<p>Two macros are defined to help:</p>
+
+<p><code>TRY</code>:</p>
+
+\precode #define TRY try {\endprecode
+
+<p><code>END</code>:</p>
+
+\precode #define END                                                     \
+  }                                                             \
+    catch(Seldon::Error& Err)                                   \
+      {                                                         \
+        Err.CoutWhat();                                         \
+        return 1;                                               \
+      }                                                         \
+    catch (std::exception& Err)                                 \
+      {                                                         \
+        cout << "C++ exception: " << Err.what() << endl;        \
+        return 1;                                               \
+      }                                                         \
+    catch (std::string& str)                                    \
+      {                                                         \
+        cout << str << endl;                                    \
+        return 1;                                               \
+      }                                                         \
+    catch (const char* str)                                     \
+      {                                                         \
+        cout << str << endl;                                    \
+        return 1;                                               \
+      }                                                         \
+    catch(...)                                                  \
+      {                                                         \
+        cout << "Unknown exception..." << endl;                 \
+        return 1;                                               \
+      }
+\endprecode
+
+<p>It is advocated that you enclose your code (in the <code>main</code> function) with <code>TRY;</code> and <code>END;</code>:</p>
+
+\precode
+int main(int argc, char** argv)
+{
+  TRY;
+
+  // Here goes your code.
+
+  END;
+
+  return 0;
+}
+\endprecode
+
+<a name="Debugging"></a>
+<h2>Exceptions and debugging</h2>
+
+<p>Suppose your code contains an error and raises an exception. You probably want to identify the function that raised the exception. The error message should contain the name of the function. But you probably want to know the exact line where the error occurred and the sequence of calls. Then, you have two options, using a debugger.</p>
+
+<p>One option is to place a breakpoint in <code>Error::Error(string function = "", string comment = "")</code> (see file share/Errors.cxx) because this constructor should be called before the exception is actually raised.</p>
+
+<p>Another option, more convenient because no breakpoint is to be placed, is to define <code>SELDON_WITH_ABORT</code>. With that flag activated, if a %Seldon exception is raised, the program will simply abort. If you include SeldonLib.hxx, this flag is actually already activated. The call stack is then at hand. See the example below, using gdb under Linux. The program <code> error.cpp</code> demonstrates the technique:</p>
+
+\precode
+#define SELDON_WITH_ABORT // not needed with SeldonLib.hxx
+#define SELDON_DEBUG_LEVEL_4 // which checks bounds.
+#include "Seldon.hxx"
+using namespace Seldon;
+
+int main(int argc, char** argv)
+{
+  TRY;
+
+  IVect V(3);
+  cout << "Bad access: " << V(3) << endl;
+
+  END;
+
+  return 0;
+}
+\endprecode
+
+<p>The error and the calls sequence are easy to obtain:</p>
+
+\prescreen
+$ g++ -o error -g -I ~/src/seldon error.cpp
+$ ./error                                        
+ERROR!                                                     
+Index out of range in Vector<VectFull>::operator().        
+   Index should be in [0, 2], but is equal to 3.           
+Aborted
+$ gdb ./error
+GNU gdb 6.8-debian
+Copyright (C) 2008 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu"...
+(gdb) run
+Starting program: /tmp/error 
+ERROR!
+Index out of range in Vector<VectFull>::operator().
+   Index should be in [0, 2], but is equal to 3.
+
+Program received signal SIGABRT, Aborted.
+0x00007f4b7e136fb5 in raise () from /lib/libc.so.6
+(gdb) up
+#1  0x00007f4b7e138bc3 in abort () from /lib/libc.so.6
+(gdb) up
+#2  0x000000000040308e in WrongIndex (this=0x1a83370, function=
+        {static npos = 18446744073709551615, _M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>},
+                                                              <No data fields>}, _M_p = 0x7fff86e3e0f0 "H?\001"}}, comment=
+        {static npos = 18446744073709551615, _M_dataplus = {<std::allocator<char>> = {<__gnu_cxx::new_allocator<char>> = {<No data fields>},
+                           <No data fields>}, _M_p = 0x7fff86e3e100 "??\001"}}) at /home/mallet/src/seldon/share/Errors.cxx:206
+206	    abort();
+(gdb) up
+#3  0x0000000000404888 in Seldon::Vector<int, Seldon::VectFull, Seldon::MallocAlloc<int> >::operator() (this=0x7fff86e3e1c0, i=3)
+    at /home/mallet/src/seldon/vector/Vector.cxx:440
+440	      throw WrongIndex("Vector<VectFull>::operator()",
+(gdb) up
+#4  0x000000000040364b in main (argc=1, argv=0x7fff86e3e2d8) at error.cpp:11
+11	  cout << "Bad access: " << V(3) << endl;
+\endprescreen
+
+<a name="Notes"></a>
+<h2>Notes</h2>
+
+<p>Apart from exceptions, two useful macros are defined to ease the debugging
+activities:</p>
+
+<p><code>ERR</code>:</p>
+
+\precode #define ERR(x) cout << "Hermes - " #x << endl\endprecode
+
+<p><code>DISP</code>:</p>
+
+\precode #define DISP(x) cout << #x ": " << x << endl\endprecode
+
+<p>In a code:</p>
+
+\precode
+ERR(5);
+ERR(5a);
+int i = 7;
+DISP(i + 1);
+ERR(Last line);
+\endprecode
+
+<p>returns on screen:</p>
+
+<pre class="fragment">Hermes - 5
+Hermes - 5a
+i + 1: 8
+Hermes - Last line
+</pre>
+<br/>
+
+<a name="Classes"></a>
+<h2> Classes</h2>
+
+<table class="category-table">
+<tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#Error">Error</a></td> 
+ <td class="category-table-td">Base class for exceptions in Seldon</td> </tr>
+ <tr class="category-table-tr-2">
+ <td class="category-table-td"><a href="#Undefined">Undefined</a></td> 
+ <td class="category-table-td">Error for undefined functions</td> </tr>
+  <tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#WrongArgument">WrongArgument</a></td> 
+ <td class="category-table-td">Error for wrong arguments</td> </tr>
+ <tr class="category-table-tr-2">
+ <td class="category-table-td"><a href="#NoMemory">NoMemory</a></td> 
+ <td class="category-table-td">Error for insufficient memory</td> </tr>
+ <tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#WrongDim">WrongDim</a></td> 
+ <td class="category-table-td">Error for wrong dimensions</td> </tr>
+ <tr class="category-table-tr-2">
+ <td class="category-table-td"><a href="#WrongIndex">WrongIndex</a></td> 
+ <td class="category-table-td">Error for wrong indexes</td> </tr>
+ <tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#WrongRow">WrongRow</a></td> 
+ <td class="category-table-td">Error for a wrong row</td> </tr>
+ <tr class="category-table-tr-2">
+ <td class="category-table-td"><a href="#WrongCol">WrongCol</a></td> 
+ <td class="category-table-td">Error for a wrong col</td> </tr>
+  <tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#IOError">IOError</a></td> 
+ <td class="category-table-td">Error for input/output</td> </tr>
+  <tr class="category-table-tr-2">
+ <td class="category-table-td"><a href="#SolverMaximumIterationError">SolverMaximumIterationError</a></td> 
+ <td class="category-table-td">Error for maximal iterations reached for a solver</td> </tr>
+  <tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#SolverDivergenceError">SolverDivergenceError</a></td> 
+ <td class="category-table-td">Error because of a divergent algorithm </td> </tr>
+  <tr class="category-table-tr-2">
+ <td class="category-table-td"><a href="#LapackError">LapackError</a></td> 
+ <td class="category-table-td">Error when calling a Lapack function</td> </tr>
+ </table>
+
+<br/>
+
+<h2> Functions</h2>
+
+<table class="category-table">
+  <tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#CheckBounds">CheckBounds</a></td> 
+ <td class="category-table-td">Checks if the indexes of an array/matrix are out of bounds </td> </tr>
+   <tr class="category-table-tr-2">
+ <td class="category-table-td"><a href="#CheckBoundsSym">CheckBoundsSym</a></td> 
+ <td class="category-table-td">Checks if the indexes of a symmetric matrix are out of bounds </td> </tr>
+   <tr class="category-table-tr-1">
+ <td class="category-table-td"><a href="#CheckBoundsTriang">CheckBoundsTriang</a></td> 
+ <td class="category-table-td">Checks if the indexes of a triangular matrix are out of bounds </td> </tr>
+ </table>
+
+<br/>
+
+<div class="separator"><a name="Error"></a></div>
+
+
+
+<h3>Error</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  Error();
+  Error(string function);
+  Error(string function, string comment);
+  Error(string description, string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception
+thow Error();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw Error("MyFunctionName", "Failed to complete the algorithm");
+
+// or the description of the error
+throw Error("NoConvergence", "MyFunctionName", "Failed to complete the algorithm");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (Error& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+
+<div class="separator"><a name="Undefined"></a></div>
+
+
+
+<h3>Undefined</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  Undefined();
+  Undefined(string function);
+  Undefined(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an undefined function
+thow Undefined();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw Undefined("MyFunctionName", "Function not defined for these arguments");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (Undefined& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+
+<div class="separator"><a name="WrongArgument"></a></div>
+
+
+
+<h3>WrongArgument</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  WrongArgument();
+  WrongArgument(string function);
+  WrongArgument(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of a wrong argument
+thow WrongArgument();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw WrongArgument("MyFunctionName", "Argument 2 must be positive");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (WrongArgument& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+
+<div class="separator"><a name="NoMemory"></a></div>
+
+
+
+<h3>NoMemory</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  NoMemory();
+  NoMemory(string function);
+  NoMemory(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of insufficient memory
+thow NoMemory();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw NoMemory("MyFunctionName", "Not enough memory to complete the factorization");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (NoMemory& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="WrongDim"></a></div>
+
+
+
+<h3>Undefined</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  WrongDim();
+  WrongDim(string function);
+  WrongDim(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an incorrect dimension
+thow WrongDim();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw WrongDim("MyFunctionName", "Number of rows is too small");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (WrongDim& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+
+<div class="separator"><a name="WrongIndex"></a></div>
+
+
+
+<h3>Undefined</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  WrongIndex();
+  WrongIndex(string function);
+  WrongIndex(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an index out of bounds
+thow WrongIndex();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw WrongIndex("MyFunctionName", "Index i is not in [0, 3]");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (WrongIndex& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+
+<div class="separator"><a name="WrongRow"></a></div>
+
+
+
+<h3>Undefined</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  WrongRow();
+  WrongRow(string function);
+  WrongRow(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an incorrect row
+thow WrongRow();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw WrongRow("MyFunctionName", "row is null");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (WrongRow& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="WrongCol"></a></div>
+
+
+
+<h3>WrongCol</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  WrongCol();
+  WrongCol(string function);
+  WrongCol(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an undefined function
+thow WrongCol();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw WrongCol("MyFunctionName", "column contains NaN");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (WrongCol& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="IOError"></a></div>
+
+
+
+<h3>IOError</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  IOError();
+  IOError(string function);
+  IOError(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an input/output error
+thow IOError();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw IOError("MyFunctionName", "File does not exist");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (IOError& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="SolverMaximumIterationError"></a></div>
+
+
+
+<h3>Undefined</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  SolverMaximumIterationError();
+  SolverMaximumIterationError(string function);
+  SolverMaximumIterationError(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an undefined function
+thow SolverMaximumIterationError();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw SolverMaximumIterationError("MyFunctionName", "Maximum number of iterations reached");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (SolverMaximumIterationError& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="SolverDivergenceError"></a></div>
+
+
+
+<h3>Undefined</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  SolverDivergenceError();
+  SolverDivergenceError(string function);
+  SolverDivergenceError(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of an undefined function
+thow SolverDivergenceError();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw SolverDivergenceError("MyFunctionName", "Algorithm diverged");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (SolverDivergenceError& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="LapackError"></a></div>
+
+
+
+<h3>IOError</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+  LapackError();
+  LapackError(string function);
+  LapackError(string function, string comment);
+</pre>
+
+
+<h4> Example : </h4>
+\precode
+// if you want to raise an exception because of a Lapack error
+thow LapackError();
+
+// you can provide optional parameters
+// such as the function name and a comment
+throw LapackError("MyFunctionName", "Error while calling Lapack");
+
+// if you catch an error
+try
+{
+// your code
+}
+catch (LapackError& Err)
+{
+  // you can display the error with CoutWhat
+  Err.CoutWhat();
+  // or retrieve the message in a string
+  string res = Err.What();
+}
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="CheckBounds"></a></div>
+
+
+
+<h3>CheckBounds</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+void CheckBounds(int i, int length, string name);
+void CheckBounds(int i, int j, int length1, int length2, string name);
+void CheckBounds(int i, int j, int k, int length1, int length2, int length3, string name);
+// etc
+</pre>
+
+<p> These functions check if the index i is contained in the interval [0, length-1]. If it is not the case, it will raise an exception (<a href="#WrongIndex">WrongIndex</a>). For a matrix, it will check that the first index i is contained in the interval [0, length1-1] and the second index j in the interval [0, length2-1]. Similarly, you can give more indexes (up to 9 indexes). The last argument is the function name. </p>
+
+<h4> Example : </h4>
+\precode
+// you want to check if i is contained in [0, 2] :
+CheckBounds(i, 3, "MyFunction");
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="CheckBoundsSym"></a></div>
+
+
+
+<h3>CheckBoundsSym</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+void CheckBoundsSym(int i, int j, int m, int n, string name);
+</pre>
+
+<p> This function checks if the index i is contained in the interval [0, m-1], and if j is contained in the interval [0, n-1]. Moreover, it checks that j is greater or equal to i such that you can modify only upper part of matrix.</p>
+
+<h4> Example : </h4>
+\precode
+// you want to check if (i, j) is contained in upper part of a matrix 3x4 :
+CheckBoundsSym(i, j, 3, 4, "MyFunction");
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+
+<div class="separator"><a name="CheckBoundsTriang"></a></div>
+
+
+
+<h3>CheckBoundsTriang</h3>
+
+<h4>Syntax : </h4>
+ <pre class="syntax-box">
+void CheckBoundsTriang(int i, int j, int m, int n, bool upper, string name);
+</pre>
+
+<p> This function checks if the index i is contained in the interval [0, m-1], and if j is contained in the interval [0, n-1]. Moreover, if the argument upper is true, it checks that j is greater or equal to i s uch that you can modify only upper part of the matrix. If the argument upper is false, it checks that you are in the lower part of the matrix. </p>
+
+<h4> Example : </h4>
+\precode
+// you want to check if (i, j) is contained in the lower part of a matrix 3x4 :
+CheckBoundsTriang(i, j, 3, 4, false, "MyFunction");
+\endprecode
+
+
+<h4>Location :</h4>
+<p> Errors.cxx</p>
+
+*/

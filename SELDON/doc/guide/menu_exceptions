@@ -1,0 +1,12 @@
+<div class="PageDoc"><div class="header">
+  <table cellpadding="10"> <tr> <td> <div class="headertitle">    
+      <div class="title">Exceptions </div>
+      </div></td>
+      <td> &nbsp;&nbsp;&nbsp;&nbsp;</td>
+      <td> <button class="TopMenuButton"><div><a href="#CatchExceptions">Catching exceptions</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#Debugging">Debugging</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#Notes">Notes</a></div></button></td>
+      <td> <button class="TopMenuButton"><div><a href="#Classes">Classes</a></div></button></td>
+    </tr>
+    </table>
+</div><!--header-->
