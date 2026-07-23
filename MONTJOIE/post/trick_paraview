@@ -1,0 +1,1 @@
+mencoder -fps 25 -ovc x264 initialFile.avi -o outputFile.avi

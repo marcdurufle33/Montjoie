@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+import sys,os
+
+if (len(sys.argv) < 2):
+  print "Cette commande demande au moins un argument : geo2mesh test"
+  exit(0)
+
+r = 1
+if (len(sys.argv) == 3):
+    r = int(sys.argv[2])
+ 
+racine = sys.argv[1]
+if (racine.endswith('.geo')):
+  racine = racine[0:(len(racine)-4)]
+
+file_geo = racine + '.geo'
+file_msh = racine + '.msh'
+file_mesh = racine + '.mesh' 
+if (r == 1):
+  command_line = 'gmsh '+file_geo+' -optimize -3 -o '+file_msh
+  os.system(command_line)
+else:
+  command_line = 'gmsh '+file_geo+' -optimize -3 -degree '+str(r)+' -o '+file_msh
+  os.system(command_line)
+
+fid = open(file_geo, mode='r')
+lignes = fid.readlines();
+fid.close()
+
+sym_x = False
+sym_y = False
+sym_z = False
+perioTeta = False
+
+for i in range(len(lignes)): 
+  if (lignes[i].startswith("SymmetryX")):
+    sym_x = True;
+  
+  if (lignes[i].startswith("SymmetryY")):
+    sym_y = True;
+
+  if (lignes[i].startswith("SymmetryZ")):
+    sym_z = True;
+
+  if (lignes[i].startswith("PeriodicityTeta")):
+    perioTeta = True;
+
+chaine_sym = '';
+if (sym_x):
+  chaine_sym = chaine_sym+'X'
+
+if (sym_y):
+  chaine_sym = chaine_sym+'Y'
+
+if (sym_z):
+  chaine_sym = chaine_sym+'Z'
+
+if ((sym_x) or (sym_y) or (sym_z)):
+  os.system('sym_mesh.x '+file_msh+' '+chaine_sym+' '+str(r))
+
+if (perioTeta):
+  os.system('per_mesh.x '+file_msh+' '+str(r))
+
+if (r == 1):
+  os.system('convert_mesh '+file_msh+' '+file_mesh)
+  os.system('rm -f '+file_msh)
+
+
+

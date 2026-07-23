@@ -1,0 +1,9 @@
+#ifndef MONTJOIE_FILE_HARMONIC_WAVE_STELLAR_HXX
+
+namespace Montjoie
+{
+  
+}
+
+#define MONTJOIE_FILE_HARMONIC_WAVE_STELLAR_HXX
+#endif

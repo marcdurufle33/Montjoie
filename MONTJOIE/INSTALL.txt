@@ -1,0 +1,279 @@
+// basic packages for compilation and usage of svn
+sudo apt-get install make cmake
+sudo apt-get install gfortran g++
+sudo apt-get install subversion ssh
+
+For a compilation/execution in parallel, install a MPI library:
+sudo apt-get install libopenmpi-dev
+
+We assume that montjoie is located in ~/montjoie/MONTJOIE and external libraries in ~/Solve
+
+/*  BLAS, CBLAS, LAPACK */
+
+
+// Comments are preceded with //
+// Download Blas in netlib.org:
+wget http://www.netlib.org/blas/blas.tgz
+tar zxvf blas.tgz
+cd BLAS-3.8.0
+make
+mv blas_LINUX.a libblas.a
+cd ..
+
+// Download Cblas in netlib.org:
+wget http://www.netlib.org/blas/blast-forum/cblas.tgz
+tar zxvf cblas.tgz
+cd CBLAS
+// Modify the path where Blas is (variable BLLIB) in Makefile.in
+make
+mv lib/cblas_LINUX.a libcblas.a
+// In order to avoid the MKL bug, create an archive libcblas_mkl.a:
+ar rv libcblas_mkl.a src/zdotcsub.o src/zdotusub.o src/cdotcsub.o src/cdotusub.o
+cd ..
+
+// Download Lapack:
+wget http://www.netlib.org/lapack/lapack-3.5.0.tgz
+tar zxvf lapack-3.5.0.tgz
+cd lapack-3.5.0
+cmake .
+make
+mv lib/liblapack.a liblapack.a
+
+cd  ~/montjoie/MONTJOIE
+// You can test this first step :
+// cp Makefile.LINUX Makefile
+// In the Makefile, set USE_BLAS := YES (NO for all the other libs)
+// You will let OPTIMIZATION to FASTER, USE_OPENMP and USE_MPI to YES if you compile in parallel, and USE_VERBOSE to YES
+// ifeq($(USE_BLAS), YES), modify the pathes if needed
+// You can check that the target "make acous2D" compiles correctly
+make acous2D
+You can type "make -j8 acous2D" if you are using a machine with at least 8 cores. The compilation should be eight times faster
+// prior to launching the code, you will need to add the folder lib in the environment variable LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`/lib
+// a good idea would bee to add this line (by replacing `pwd` by the folder where Montjoie is) in .bashrc or .bash_profile for the next connections
+./acous2D.x example/acous2D/time_carre.ini
+
+/* MUMPS */
+
+
+// Download metis:
+cd ~/Solve/
+wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz
+tar zxvf metis-5.1.0.tar.gz 
+cd metis-5.1.0
+make config
+make
+// the path here can depend on the architecture
+mv build/Linux-x86_64/libmetis/libmetis.a .
+cd ..
+
+// Download scotch 
+wget https://gitlab.inria.fr/scotch/scotch/-/archive/v6.1.1/scotch-v6.1.1.tar.bz2
+tar scotch-v6.1.1.tar.bz2
+sudo apt install zlib1g-dev
+cd scotch-v6.1.1/src
+cp Make.inc/Makefile.inc.i686_pc_linux2 Makefile.inc
+// Remove the threads in Makefile.inc for a single-threaded execution and put -Drestrict=
+// make ptscotch is executed to obtain the parallel version (put mpicc if the compiler does not find mpi.h)
+// make esmumps and make ptesmumps are needed for Mumps
+make scotch ptscotch esmumps ptesmumps
+cd ../..
+
+// Download ParMetis:
+wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/parmetis-4.0.3.tar.gz
+tar zxvf parmetis-4.0.3.tar.gz
+cd parmetis-4.0.3
+make config
+make
+// the next folder depends on the architecture
+mv build/Linux-x86_64/libparmetis/libparmetis.a .
+cd ..
+
+// Download Mumps on http://graal.ens-lyon.fr/MUMPS/
+wget http://graal.ens-lyon.fr/MUMPS/MUMPS_5.4.0.tar.gz
+tar zxvf MUMPS_5.4.0.tar.gz
+cd MUMPS_5.4.0
+cp Make.inc/Makefile.debian.SEQ Makefile.inc (or .PAR in parallel)
+// Modify Makefile.inc to specify the chosen orderings
+
+// In sequential (Metis and Pord are selected) :
+ISCOTCH =
+IMETIS = -I/home/durufle/Solve/metis-5.1.0/include
+ORDERINGSF = -Dmetis -Dpord 
+
+// In parallel (all orderings are selected) :
+LSCOTCHDIR = /home/durufle/Solve/scotch-v6.1.1/
+ISCOTCH   = -I$(LSCOTCHDIR)/include # only needed for ptscotch
+LMETISDIR = /home/durufle/Solve/parmetis-4.0.3/
+IMETIS    = -I$(LMETISDIR)/include -I$(LMETISDIR)/metis/include
+ORDERINGSF = -Dscotch -Dmetis -Dpord -Dptscotch -Dparmetis
+// In parallel you can also replace compilers with mpicc and mpif90
+
+// in parallel or sequential
+// Execute the following command in order to compile only the library:
+make alllib
+cd ..
+
+
+/* Blacs (parallel execution) */
+
+// Download Blacs:
+wget http://www.netlib.org/blacs/mpiblacs.tgz
+wget http://www.netlib.org/blacs/mpiblacs-patch03.tgz
+tar zxvf mpiblacs.tgz
+tar zxvf mpiblacs-patch03.tgz
+cd BLACS
+cp BMAKES/Bmake.MPI-LINUX Bmake.inc
+// Modify Bmake.inc :
+// BTOPdir contains the root directory where BLACS is present
+// in MPIdir, put the directory where MPI is installed
+// for instance /usr/lib/openmpi with openmpi basic install
+// and set MPILIB = $(MPILIBdir)/libmpi.so
+// replace F77 = g77 by F77 = mpif77 and set CC = mpicc
+
+// Then compile
+make mpi
+
+// group all the archives .a :
+cd LIB
+ar xv blacsCinit_MPI-LINUX-0.a
+ar xv blacs_MPI-LINUX-0.a
+ar rv libblacs.a *.o *.C
+rm *.o *.C
+mv libblacs.a ../
+cd ../..
+
+/* Scalapack (parallel execution) */
+
+// Download Scalapack:
+wget http://www.netlib.org/scalapack/scalapack-2.0.2.tgz
+tar zxvf scalapack-2.0.2.tgz
+cd scalapack-2.0.2
+// Compile:
+cp SLmake.inc.example SLmake.inc
+make lib
+cd ../
+
+
+/* PASTIX */
+
+
+// Download Pastix on gforge.inria.fr
+sudo apt install liblapacke-dev
+wget https://gitlab.inria.fr/solverstack/pastix//uploads/3fc798eb3ca6282e21506349df7f9da2/pastix-6.2.1.tar.gz
+tar zxvf pastix-v6.2.1.tar.gz
+cd pastix-6.2.1
+mkdir build; cd build/
+cmake .. -DPASTIX_INT64=OFF -DPASTIX_WITH_MPI=ON -DCMAKE_INSTALL_PREFIX=/home/durufle/Solve/pastix-v6.2.1/build -DPASTIX_ORDERING_METIS=ON -DPASTIX_ORDERING_PTSCOTCH=OFF
+make
+make install
+cd ../..
+
+
+4/* Arpack */
+
+
+// Download Arpack/Parpack :
+wget https://www.math.u-bordeaux.fr/~durufle/parpack.tar.bz2
+tar jxvf parpack.tar.bz2
+cd Parpack
+// in the file ARmake.inc, change the variable home in order to provide the directory where Arpack has been uncompressed
+// in sequential :
+make lib
+// in parallel
+make lib plib
+cd ..
+
+/* MPFR */
+
+Mpfr
+
+// You just need to install gmp and mpfr:
+sudo apt install libgmp3-dev libmpfr-dev
+// In the Makefile of Montjoie, you can set USE_MPFR := YES for multiple precision computation
+// of course not all the targets compile with MPFR
+// and no fast direct solver is available in arbitrary precision
+
+
+/* SuperLU */
+
+
+// Download SuperLU:
+wget https://github.com/xiaoyeli/superlu/archive/refs/tags/v5.2.2.tar.gz
+tar zxvf v5.2.2.tar.gz
+cd superlu-5.2.2
+mkdir build; cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=../build -DCMAKE_INSTALL_INCLUDEDIR=../build
+make
+make install
+cd ../
+
+// version in parallel
+wget https://github.com/xiaoyeli/superlu_dist/archive/refs/tags/v7.0.0.tar.gz
+tar zxvf v7.0.0.tar.gz
+cd superlu_dist-7.0.0
+mkdir build; cd build
+cmake .. -DTPL_PARMETIS_INCLUDE_DIRS="/home/durufle/Solve/parmetis-4.0.3/include;/home/durufle/Solve/parmetis-4.0.3/metis/include" \
+   -DTPL_PARMETIS_LIBRARIES="/home/durufle/Solve/parmetis-4.0.3/libparmetis.a;/home/durufle/Solve/metis-5.1.0/libmetis.a"
+make
+cd ..
+
+
+/* UmfPack/Cholmod */
+
+// Download SuiteSparse where both UmfPack and Cholmod are available
+wget https://github.com/DrTimothyAldenDavis/SuiteSparse/archive/refs/tags/v5.10.0.tar.gz
+tar zxvf SuiteSparse-5-10.0.tar.gz
+cd SuiteSparse/SuiteSparse_config
+// In the file SuiteSparse_config.mk, modify SUITESPARSE and manage field containing ?=
+cd ..
+make library
+cd ../
+
+/* Gsl */
+
+
+// To install it under Linux
+sudo apt install libgsl-dev
+
+/* Fftw */
+
+
+// Download fftw:
+sudo apt install libfftw3-dev
+
+
+/*  Montjoie */
+
+cd ~/montjoie/MONTJOIE
+The following command removes the previous .o and .a files:
+make cleanlib
+This command should be executed if you change of configuration (by example compiling with MPI, or with another library)
+If you have installed all the libraries in this page, you should be able to set
+USE_MUMPS := YES
+USE_PASTIX := YES
+USE_ARPACK := YES
+USE_SLEPC := YES
+USE_GSL := YES
+USE_FFTW := YES
+USE_SCOTCH := YES (in parallel)
+USE_UMFPACK := YES
+USE_SUPERLU := YES
+USE_CHOLMOD := YES
+You correct all the paths for these libraries in the Makefile, then you should be able to compile helm2D :
+make -j8 helm2D
+
+
+USE_PARDISO and USE_MKL can be set to YES, if you link with MKL library (see section devoted to BLAS/LAPACK in the Makefile)
+USE_OPENCV can be set to YES is you have opencv installed
+USE_WSMP can be set to YES if you have wsmp installed (Watson Sparse Matrix Package)
+
+
+For medit
+type frey medit on google to download the software
+for 64 bits machines :
+sudo apt-get install lib32z1 lib32ncurses5
+sudo apt-get install freeglut3-dev
+sudo apt-get install libglu1-mesa:i386
+sudo apt-get install libxmu-dev
+sudo apt-get install libxmu-dev:i386

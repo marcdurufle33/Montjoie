@@ -1,0 +1,9 @@
+#ifndef MONTJOIE_FILE_WAVE_STELLAR_EQUATION_HXX
+
+namespace Montjoie
+{
+  
+}
+
+#define MONTJOIE_FILE_WAVE_STELLAR_EQUATION_HXX
+#endif

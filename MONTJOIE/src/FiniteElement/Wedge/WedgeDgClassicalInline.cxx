@@ -1,0 +1,9 @@
+#ifndef MONTJOIE_FILE_WEDGE_DG_CLASSICAL_INLINE_CXX
+
+namespace Montjoie
+{
+
+}
+
+#define MONTJOIE_FILE_WEDGE_DG_CLASSICAL_INLINE_CXX
+#endif

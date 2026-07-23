@@ -1,0 +1,566 @@
+# put YES if you want to use Blas and Lapack, NO other
+USE_BLAS := YES
+# put YES to compile in optimize mode, NO to compile in debug mode 
+OPTIMIZATION := FASTER
+STATIC_COMPILATION := YES
+# which direct solver should be used ?
+USE_MUMPS := YES
+USE_PARDISO := NO
+USE_PASTIX := NO
+# using arpack ?
+USE_ARPACK := YES
+# using feast ?
+USE_FEAST := YES
+# using slepc ?
+USE_SLEPC := YES
+# multiple precision
+#USE_MPFR := FLOAT128
+#USE_MPFR := FLOAT80
+USE_MPFR := NO
+# parallel ?
+USE_MPI := YES
+USE_SRUN := NO
+# openmp ?
+USE_OPENMP := YES
+USE_MT_MKL := NO
+# MPI Library ?
+USE_INTELMPI := YES
+USE_OPENMPI := NO
+USE_MVAPICH := NO
+# which compiler ?
+USE_INTEL := NO
+USE_GCC := YES
+# Gsl ?
+USE_GSL := YES
+# use of Alglib
+USE_ALGLIB := NO
+# fftw ?
+USE_FFTW := NO
+# use mkl for sparse routines ?
+USE_MKL := NO
+# Scotch ?
+USE_SCOTCH := NO
+USE_METIS := YES
+# verbose mode
+USE_VERBOSE := YES
+# open cv ?
+USE_OPENCV := NO
+# alternative direct solvers
+USE_UMFPACK := YES
+USE_SUPERLU := NO
+USE_CHOLMOD := YES
+USE_WSMP := NO
+
+FLAGS := -DMONTJOIE_WITH_REAL_TIMING
+
+# directory where external libraries are installed
+MKL := /cm/shared/modules/intel/haswell/parallel_studio/2019_update4/mkl
+
+ifeq ($(USE_MPI),YES)
+
+FLAGS := $(FLAGS) -DSELDON_WITH_MPI
+ifeq ($(USE_OPENMPI), YES)
+  SOLVE := /home/durufle/Solve/OpenMpi
+else
+  SOLVE := /home/durufle/Solve/IntelMpi
+endif
+
+else
+
+SOLVE := /home/durufle/Solve/GccPlafrim2
+
+endif
+
+
+# openmp
+FLAGS := $(FLAGS) -fopenmp
+
+
+# using scotch ?
+ifeq ($(USE_MPI),YES)
+ifeq ($(USE_MUMPS),YES)
+USE_SCOTCH := YES
+endif
+
+ifeq ($(USE_MUMPS),INT64)
+USE_SCOTCH := INT64
+endif
+
+endif
+
+ifeq ($(USE_PASTIX),YES)
+USE_SCOTCH := YES
+endif
+ifeq ($(USE_PASTIX),INT64)
+USE_SCOTCH := INT64
+endif
+
+# using ParMetis ?
+USE_PARMETIS := NO
+ifeq ($(USE_MPI),YES)
+
+ifeq ($(USE_MUMPS),YES)
+USE_PARMETIS := YES
+endif
+
+ifeq ($(USE_SUPERLU),YES)
+USE_PARMETIS := YES
+endif
+
+ifeq ($(USE_SUPERLU),INT64)
+USE_PARMETIS := INT64
+USE_METIS := INT64
+endif
+
+ifeq ($(USE_MUMPS),INT64)
+USE_PARMETIS := INT64
+USE_METIS := INT64
+endif
+
+endif
+
+# using Cholmod ?
+ifeq ($(USE_UMFPACK),YES)
+# Cholmod already included in UmfPack
+USE_CHOLMOD := NO
+endif
+
+
+
+# default file to compile
+#LSTBIN = src/Program/Beginner/erreur_matlab.cc
+#LSTBIN = src/Program/Unit/Seldon/eigenvalue_test.cc
+#LSTBIN = src/Program/Unit/Seldon/eigenvalue_feast.cc
+#LSTBIN = src/Program/Unit/Seldon/eigenvalue_slepc.cc
+#LSTBIN = src/Program/Test/write_index_test.cc
+#LSTBIN = src/Program/Unit/Elliptic/maxwell3D_test.cc
+#LSTBIN = src/Program/Expert/cfl1D.cc
+#LSTBIN = src/Program/Test/eigenval_slepc.cc
+#LSTBIN = src/Program/Unit/Instationary/mass_matrix_test.cc
+#LSTBIN = src/Program/Unit/Algebra/scalapack_test.cc
+#LSTBIN = src/Program/Test/magneto.cc
+LSTBIN = src/Program/Unit/Seldon/poly_eigenval_slepc.cc
+#LSTBIN = src/Program/Mesh/stability_mesh.cc
+#LSTBIN = src/Program/Mesh/intersection_maillage.cc
+
+#BIN = src/erreur.x
+#BIN = src/cfl1D.x
+#BIN = src/stab.x
+#BIN = src/read.x
+#BIN = src/helm_div.x
+#BIN = src/memory.x
+BIN = src/test.x
+
+# directory where Seldon is installed
+CHESELDON := ../SELDON
+#CHESELDON := /home/durufle/seldon
+# directories where files .h and . hxx are sought
+INCLUDE := -I. -Isrc -I$(CHESELDON) 
+
+
+# all warnings except for deprecated functions
+#FLAGS := $(FLAGS) -Wall -Wno-deprecated -ftemplate-depth-5000
+FLAGS := $(FLAGS) -Wall -Wextra -Wno-strict-overflow -Wno-unused-parameter -Wno-unknown-pragmas -ftemplate-depth-5000 -Woverloaded-virtual
+#FLAGS := $(FLAGS) -w -ftemplate-depth-5000
+
+MPFR_LIB := 
+
+ifeq ($(USE_MPI),YES)
+  LIB := -lhwloc -lrt -lpthread
+else
+  LIB :=
+endif
+
+ifneq ($(USE_MPFR),NO)
+   USE_BLAS := NO
+   USE_MUMPS := NO
+   USE_PARDISO := NO
+   USE_MKL := NO
+   USE_PASTIX := NO
+   USE_ARPACK := NO
+   USE_FEAST := NO
+   USE_FFTW := NO
+   USE_SCOTCH := NO
+   USE_CHOLMOD := NO
+   USE_SUPERLU := NO
+   USE_UMFPACK := NO
+   USE_WSMP := NO
+   USE_ALGLIB := NO
+   USE_SLEPC := NO
+endif
+
+ifeq ($(USE_MPFR),FLOAT128)
+  FLAGS := $(FLAGS) -DMONTJOIE_WITH_FLOAT128
+  LIB := -lquadmath $(LIB)
+endif
+
+ifeq ($(USE_MPFR),FLOAT80)
+  FLAGS := $(FLAGS) -DMONTJOIE_WITH_FLOAT80
+endif
+
+ifeq ($(USE_MPFR),YES)
+   FLAGS := $(FLAGS) -DMONTJOIE_WITH_MPFR -std=c++11
+   CHE_MPFR := /home/durufle/lib/mpfr
+   MPFR_LIB := lib/mpreal.o
+   LIB := -lmpfr -lgmp $(LIB)
+endif
+
+ifeq ($(USE_MPFR),NO)
+   # mettre -lpmi pour les jobs batch
+   LIB := lib/etime.o -Llib -lbessel $(LIB) 
+   ifeq ($(USE_MPI), YES)
+     ifeq ($(USE_OPENMPI), YES)
+       LIB := $(LIB) -lmpi_mpifh
+     else
+       LIB := $(LIB) -lmpifort
+     endif
+   else
+     LIB := $(LIB)
+   endif
+endif
+
+ifeq ($(USE_SRUN),YES)
+   LIB := $(LIB) -lpmi
+endif
+
+ifeq ($(USE_METIS),INT64)
+   LIB := -L$(SOLVE)/Metis64 -lmetis $(LIB)
+   FLAGS := $(FLAGS) -DMETIS_INTSIZE64
+else
+   LIB := -L$(SOLVE)/Metis -lmetis $(LIB)
+endif
+
+
+# if Blas and Lapack are needed
+ifeq ($(USE_BLAS),YES)  
+
+#  LIB := -L$(SOLVE)/Lapack -llapack -L$(SOLVE)/Cblas -lcblas -L$(SOLVE)/Blas -lblas $(LIB) 
+
+  # recent version of MKL
+  ifeq ($(USE_MT_MKL),YES)
+    LIB := $(SOLVE)/Cblas/libcblas_mkl.a -L$(MKL)/lib/intel64 -lmkl_lapack95_lp64 -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core $(LIB) 
+  else
+    LIB := $(SOLVE)/Cblas/libcblas_mkl.a -L$(MKL)/lib/intel64 -lmkl_lapack95_lp64 -lmkl_gf_lp64 -lmkl_sequential -lmkl_core $(LIB) 
+  endif
+
+  ifeq ($(USE_MKL),YES)
+    INCLUDE := $(INCLUDE) -I$(MKL)/include
+    FLAGS := $(FLAGS) -DSELDON_WITH_MKL
+  endif
+
+  FLAGS := $(FLAGS) -DSELDON_WITH_CBLAS -DSELDON_WITH_LAPACK
+endif
+
+ifeq ($(USE_GSL),YES)
+   INCLUDE := $(INCLUDE) -I/home/durufle/Solve/GccPlafrim2/gsl-2.1/include
+   LIB := -L/home/durufle/Solve/GccPlafrim2/gsl-2.1/lib -lgsl $(LIB)
+   FLAGS := $(FLAGS) -DMONTJOIE_WITH_GSL
+   ifeq ($(USE_BLAS), NO)
+      # recent version of MKL
+      ifeq ($(USE_MT_MKL),YES)
+        LIB := $(SOLVE)/Cblas/libcblas_mkl.a -L$(MKL)/lib/intel64 -lmkl_lapack95_lp64 -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core $(LIB) 
+      else
+         LIB := $(SOLVE)/Cblas/libcblas_mkl.a -L$(MKL)/lib/intel64 -lmkl_lapack95_lp64 -lmkl_gf_lp64 -lmkl_sequential -lmkl_core $(LIB) 
+      endif
+   endif
+endif
+
+# Alglib library
+ifeq ($(USE_ALGLIB),YES)
+  FLAGS := $(FLAGS) -DMONTJOIE_WITH_ALGLIB
+  INCLUDE := $(INCLUDE) -I$(SOLVE)/Alglib/src
+  LIB := $(LIB) -L$(SOLVE)/Alglib -lalglib
+endif
+
+ifeq ($(USE_FFTW),YES)
+   INCLUDE := $(INCLUDE) -I/cm/shared/apps/fftw/openmpi/gcc/64/3.3.3/include/
+   LIB := -L/cm/shared/apps/fftw/openmpi/gcc/64/3.3.3/lib $(LIB)
+   FLAGS := $(FLAGS) -DMONTJOIE_WITH_FFTW
+endif
+
+# if Scotch is needed
+ifeq ($(USE_SCOTCH),YES)
+  CHESCOTCH = $(SOLVE)/scotch_int32_nothread
+  INCLUDE := -I$(CHESCOTCH)/include $(INCLUDE)
+  LIB := -L$(CHESCOTCH)/lib -lptesmumps -lesmumps -lptscotch -lptscotcherr -lptscotchparmetis -lscotch -lscotcherr $(LIB) 
+  FLAGS := $(FLAGS) -DMONTJOIE_WITH_SCOTCH
+endif
+
+# if Scotch is needed (64 bits)
+ifeq ($(USE_SCOTCH),INT64)
+  CHESCOTCH = $(SOLVE)/scotch_int64_nothread
+  INCLUDE := -I$(CHESCOTCH)/include $(INCLUDE)
+  LIB := -L$(CHESCOTCH)/lib -lptesmumps -lesmumps -lptscotch -lptscotcherr -lptscotchparmetis -lscotch -lscotcherr $(LIB) 
+  FLAGS := $(FLAGS) -DMONTJOIE_WITH_SCOTCH -DSCOTCH_INTSIZE64
+endif
+
+# if ParMetis is needed
+ifeq ($(USE_PARMETIS),YES)
+  LIB := -L$(SOLVE)/ParMetis -lparmetis $(LIB)
+endif
+
+# if ParMetis is needed
+ifeq ($(USE_PARMETIS),INT64)
+  LIB := -L$(SOLVE)/ParMetis64 -lparmetis $(LIB)
+endif
+
+# if Cholmod is needed
+ifeq ($(USE_CHOLMOD),YES)
+  SUITE := $(SOLVE)/SuiteSparse
+  LIB := -L$(SUITE)/CHOLMOD/Lib -lcholmod -L$(SUITE)/AMD/Lib -lamd -L$(SUITE)/COLAMD/Lib -lcolamd \
+          -L$(SUITE)/CAMD/Lib -lcamd -L$(SUITE)/CCOLAMD/Lib -lccolamd -L$(SUITE)/SuiteSparse_config -lsuitesparseconfig $(LIB)
+  INCLUDE := -I$(SUITE)/CHOLMOD/Include -I$(SUITE)/SuiteSparse_config $(INCLUDE)
+  FLAGS := $(FLAGS) -DSELDON_WITH_CHOLMOD
+endif
+
+USE_SUITE := NO
+ifeq ($(USE_UMFPACK),INT64)
+  USE_SUITE := YES
+endif
+
+ifeq ($(USE_UMFPACK),YES)
+  USE_SUITE := YES
+endif
+
+# if UmfPack with Cholmod is needed
+ifeq ($(USE_SUITE),YES)
+  UMFPACK := $(SOLVE)/SuiteSparse
+  INC_COLAMD := -I$(UMFPACK)/COLAMD/Include
+  LIB_COLAMD := -L$(UMFPACK)/COLAMD/Lib -lcolamd 
+  ifeq ($(USE_MPI),YES)
+    LIB_COLAMD := -L$(UMFPACK)/COLAMD/Lib -lcolamd 
+  endif
+  LIB := -L$(UMFPACK)/UMFPACK/Lib -lumfpack -L$(UMFPACK)/CHOLMOD/Lib -lcholmod -L$(UMFPACK)/AMD/Lib -lamd \
+        -L$(UMFPACK)/CAMD/Lib -lcamd $(LIB_COLAMD) \
+	-L$(UMFPACK)/CCOLAMD/Lib -lccolamd -L$(UMFPACK)/SuiteSparse_config -lsuitesparseconfig $(LIB)
+  INCLUDE := -I$(UMFPACK)/AMD/Include -I$(UMFPACK)/CAMD/Include $(INC_COLAMD) \
+             -I$(UMFPACK)/CHOLMOD/Include -I$(UMFPACK)/UMFPACK/Include -I$(UMFPACK)/SuiteSparse_config $(INCLUDE)
+  FLAGS := $(FLAGS) -DSELDON_WITH_UMFPACK -DSELDON_WITH_CHOLMOD
+  ifeq ($(USE_UMFPACK),INT64)
+    FLAGS := $(FLAGS) -DUMFPACK_INTSIZE64
+  endif
+endif
+
+# if SuperLU is needed
+ifeq ($(USE_SUPERLU),YES)
+  ifeq ($(USE_MPI),YES)
+    LIB := -L$(SOLVE)/SuperLU_DIST/lib -lsuperlu_dist $(LIB) 
+    INCLUDE := -I$(SOLVE)/SuperLU_DIST/SRC $(INCLUDE)
+    FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU -DSELDON_WITH_SUPERLU_DIST
+  else
+    ifeq ($(USE_OPENMP),YES)
+      LIB := -L$(SOLVE)/SuperLU_MT/lib -lsuperlu_mt_PTHREAD $(LIB) 
+      INCLUDE := -I$(SOLVE)/SuperLU_MT/SRC $(INCLUDE)
+      FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU -DSELDON_WITH_SUPERLU_MT
+    else
+      LIB := -L$(SOLVE)/SuperLU/lib -lsuperlu $(LIB) 
+      INCLUDE := -I$(SOLVE)/SuperLU/SRC $(INCLUDE)
+      FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU
+    endif
+  endif
+endif
+
+
+# if SuperLU is needed
+ifeq ($(USE_SUPERLU),INT64)
+  ifeq ($(USE_MPI),YES)
+    LIB := -L$(SOLVE)/SuperLU_DIST64/lib -lsuperlu_dist $(LIB) 
+    INCLUDE := -I$(SOLVE)/SuperLU_DIST64/SRC $(INCLUDE)
+    FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU -DSELDON_WITH_SUPERLU_DIST -DSUPERLU_INTSIZE64
+  else
+    ifeq ($(USE_OPENMP),YES)
+      LIB := -L$(SOLVE)/SuperLU_MT64/lib -lsuperlu_mt_PTHREAD $(LIB) 
+      INCLUDE := -I$(SOLVE)/SuperLU_MT64/SRC $(INCLUDE)
+      FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU -DSELDON_WITH_SUPERLU_MT -DSUPERLU_INTSIZE64
+    else
+      # no superlu64 available
+      LIB := -L$(SOLVE)/SuperLU/lib -lsuperlu $(LIB) 
+      INCLUDE := -I$(SOLVE)/SuperLU/SRC $(INCLUDE)
+      FLAGS := $(FLAGS) -DSELDON_WITH_SUPERLU
+    endif
+  endif
+endif
+
+ifeq ($(USE_WSMP),YES)
+  ifeq ($(USE_MPI),YES)
+#    LIB := $(SOLVE)/wsmp/wsmp-Linux64-GNU/libpwsmpGNU64mpi2.a $(LIB)
+    LIB := $(SOLVE)/wsmp/wsmp-Linux64-GNU/lib/mvapich2/libpwsmp64.a $(LIB)
+  else
+    LIB := $(SOLVE)/wsmp/wsmp-Linux64-GNU/lib/libwsmp64.a $(LIB)
+  endif
+  FLAGS := $(FLAGS) -DSELDON_WITH_WSMP
+endif
+
+# if MUMPS is needed
+ifeq ($(USE_MUMPS),YES)
+  # MUMPS compiled with Gfortran
+  ifeq ($(USE_MPI),YES)
+     FLAGS := $(FLAGS) -DSELDON_WITH_SCALAPACK
+     CHEMUMPS = $(SOLVE)/MUMPS_INT32
+     INCLUDE := -I$(CHEMUMPS)/include $(INCLUDE)
+     LIB := -L$(CHEMUMPS)/lib -ldmumps -lzmumps -lmumps_common -lpord \
+      -L$(SOLVE)/Scalapack -lscalapack -L$(SOLVE)/Blacs -lblacs $(LIB)
+  else
+    CHEMUMPS = $(SOLVE)/Mumps
+    INCLUDE := -I$(CHEMUMPS)/include -I$(CHEMUMPS)/libseq $(INCLUDE)
+    LIB := -L$(CHEMUMPS)/lib -ldmumps -lzmumps -lmumps_common -lpord \
+    -L$(CHEMUMPS)/libseq -lmpiseq -L$(HOME)/common/lib $(LIB)
+  endif
+  FLAGS := $(FLAGS) -DSELDON_WITH_MUMPS
+endif
+
+ifeq ($(USE_MUMPS),INT64)
+  # MUMPS compiled with Gfortran
+  ifeq ($(USE_MPI),YES)
+     FLAGS := $(FLAGS) -DSELDON_WITH_SCALAPACK -DSELDON_WITH_MUMPS
+     CHEMUMPS = $(SOLVE)/MUMPS_INT64
+     INCLUDE := -I$(CHEMUMPS)/include $(INCLUDE)
+     LIB := -L$(CHEMUMPS)/lib -ldmumps -lzmumps -lmumps_common -lpord \
+      -L$(SOLVE)/Scalapack -lscalapack -L$(SOLVE)/Blacs -lblacs $(LIB)
+  endif
+endif
+
+# if PARDISO is needed
+ifeq ($(USE_PARDISO),YES)
+  #LIB := -L$(SOLVE)/Pardiso -lpardiso $(LIB)
+  FLAGS := $(FLAGS) -DSELDON_WITH_PARDISO
+endif
+
+# if PARDISO is needed (64 bits)
+ifeq ($(USE_PARDISO),INT64)
+  #LIB := -L$(SOLVE)/Pardiso -lpardiso $(LIB)
+  FLAGS := $(FLAGS) -DSELDON_WITH_PARDISO -DPARDISO_INTSIZE64
+endif
+
+# if Pastix is needed
+ifeq ($(USE_PASTIX),YES)
+  CHEPAS = $(SOLVE)/pastix_5.2.3/install
+  INCLUDE := -I$(CHEPAS) $(INCLUDE)
+  LIB := -L$(CHEPAS) -lpastix $(LIB)
+  FLAGS := $(FLAGS) -DSELDON_WITH_PASTIX
+endif
+
+# if Pastix is needed (64 bits)
+ifeq ($(USE_PASTIX),INT64)
+  CHEPAS = $(SOLVE)/pastix_int64_nothread/install
+  INCLUDE := -I$(CHEPAS) $(INCLUDE)
+  LIB := -L$(CHEPAS) -lpastix $(LIB)
+  FLAGS := $(FLAGS) -DSELDON_WITH_PASTIX
+endif
+
+# if Arparck is needed
+ifeq ($(USE_ARPACK),YES)
+  ifeq ($(USE_MPI),YES)
+    LIB := -L$(SOLVE)/Parpack -lparpack -larpack $(LIB)
+  else
+    LIB := -L$(SOLVE)/Arpack -larpack $(LIB)
+  endif  
+  FLAGS := $(FLAGS) -DSELDON_WITH_ARPACK
+endif
+
+# if Feast is needed
+ifeq ($(USE_FEAST),YES)
+  ifeq ($(USE_MPI),YES)
+    LIB := -L$(SOLVE)/Feast3/lib/linux -lpfeast -lpfeast_dense $(LIB)
+  else
+    LIB := -L$(SOLVE)/Feast3/lib/linux -lfeast -lfeast_dense $(LIB)
+  endif
+  FLAGS := $(FLAGS) -DSELDON_WITH_FEAST
+endif
+
+# if Slepc is needed
+ifeq ($(USE_SLEPC),YES)
+   FLAGS := $(FLAGS) -DSELDON_WITH_SLEPC
+   INCLUDE := $(INCLUDE) -I$(SLEPC_DIR)/$(PETSC_ARCH)/include -I$(SLEPC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include -I$(PETSC_DIR)/include
+   LIB := -L$(SLEPC_DIR)/$(PETSC_ARCH)/lib -lslepc -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc $(LIB)
+endif
+
+# if OpenCV is needed
+ifeq ($(USE_OPENCV),YES)
+  FLAGS := $(FLAGS) -DMONTJOIE_WITH_OPENCV
+  INCLUDE := $(INCLUDE) -I/lustre/durufle/Solve/include/opencv2 -I/lustre/durufle/Solve/include/
+  LIB := -L/lustre/durufle/Solve/lib -lopencv_core -lopencv_highgui $(LIB)
+endif
+
+# used compiler
+ifeq ($(USE_MPI),YES)
+  CC := mpicxx
+else
+  ifeq ($(USE_INTEL),YES)
+    CC := icc
+  else
+    CC := g++
+  endif
+endif
+
+ifeq ($(USE_INTEL),YES)
+  FCC := ifort
+  LIB := $(LIB) -lsvml -lifcore
+else
+  FCC := gfortran
+  LIB := $(LIB) -lgfortran
+endif
+
+
+FLAGS_LIB := $(FLAGS) -fPIC
+FLAGS_OBJ := $(FLAGS) -fPIC
+SEPARED_COMPIL := NO
+
+ifeq ($(OPTIMIZATION),NO)
+  # options for debug mode
+  AGRESSIVE_OPTIM = -g
+  FLAGS := $(FLAGS) -DSELDON_DEBUG_LEVEL_4
+else ifeq ($(OPTIMIZATION),PROF)
+  AGRESSIVE_OPTIM = -pg -O3
+else ifeq ($(OPTIMIZATION),FAST)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY
+  SELD_SUFFIX := _Sopt
+  MONT_SUFFIX := _opt
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1 -DNDEBUG
+else ifeq ($(OPTIMIZATION),FASTER)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY -DMONTJOIE_WITH_FAST_LIBRARY
+  SELD_SUFFIX := _Sopt
+  MONT_SUFFIX := _opt
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1 -DNDEBUG
+else ifeq ($(OPTIMIZATION),TEST)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY
+  SELD_SUFFIX := _Sdebug
+  MONT_SUFFIX := _debug
+  AGRESSIVE_OPTIM = -O0 -DSELDON_DEBUG_LEVEL_4 -g
+else ifeq ($(OPTIMIZATION),TESTER)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY -DMONTJOIE_WITH_FAST_LIBRARY
+  SELD_SUFFIX := _Sdebug
+  MONT_SUFFIX := _debug
+  AGRESSIVE_OPTIM = -O0 -g -DSELDON_DEBUG_LEVEL_4 -g
+else
+  # option for optimization mode
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1 -DNDEBUG
+endif
+
+ifeq ($(SEPARED_COMPIL),YES)
+  ifeq ($(USE_MPFR),YES)
+    MONT_SUFFIX := $(MONT_SUFFIX)_mpfr
+    SELD_SUFFIX := $(SELD_SUFFIX)_mpfr
+  endif
+  ifeq ($(USE_MPFR),FLOAT80)
+    MONT_SUFFIX := $(MONT_SUFFIX)_80
+    SELD_SUFFIX := $(SELD_SUFFIX)_80
+  endif
+  ifeq ($(USE_MPFR),FLOAT128)
+    MONT_SUFFIX := $(MONT_SUFFIX)_128
+    SELD_SUFFIX := $(SELD_SUFFIX)_128
+  endif
+  LIB_MONTJOIE_STATIC := lib/libmontjoie$(MONT_SUFFIX).a
+  LIB_SELDON_STATIC := lib/libseldon$(SELD_SUFFIX).a
+  LIB_MONTJOIE_F_STATIC := lib/libmontjoie_full$(MONT_SUFFIX).a
+  LIB_MONTJOIE := lib/libmontjoie$(MONT_SUFFIX).so
+  LIB_SELDON := lib/libseldon$(SELD_SUFFIX).so
+  LIB_MONTJOIE_F := lib/libmontjoie_full$(MONT_SUFFIX).so
+endif
+
+
+include Makefile.rules.mk

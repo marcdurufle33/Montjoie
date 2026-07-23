@@ -1,0 +1,17 @@
+Pour debugguer en parallele, soit :
+1- mpirun -gdb -np 2 ./acous3D.x ...
+2- mpirun -np 2 xterm (puis sur chaque xterm, lancer gdb)
+
+et avec valgrind :
+1- mpirun -np 2 valgrind ./acous3D.x ...
+2- mpirun -np 2 xterm (puis sur chaque xterm, lancer gdb)
+
+Dans ce repertoire :
+__get_loc_loadavg : mesure la charge sur une machine, doit etre executable, et dans le PATH, afin que les autres progs puissent le lancer a travers ssh
+cherche acous3D.x : cherche sur tous les noeuds s'il y a des processus contenant la chaine "acous3D.x"
+cleanpc : si vous n'arrivez plus a utiliser mpirun/mpiexec, pensez a nettoyez les anciennes executions
+exec.RIOB : exemple d'utilisation de mpirun sur le cluster riob
+gen_hosts : generation d'un fichier contenant la liste des machines dispos. Le fichier cree s'appelle mpd.hosts.
+            tres utile si vous voulez eviter de surcharger riob et de lancer des processus sur des noeuds deja pris
+network.py : script python utilise par cherche et gen_hosts
+nkill acous3D.x : essaie de tuer sur tous les noeuds les processus contenant la chaine "acous3D.x"

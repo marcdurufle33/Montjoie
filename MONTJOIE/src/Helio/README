@@ -1,0 +1,42 @@
+#######################################################################################################
+
+CONTENTS :
+
+- Program : Compile these files to produce executables that solve given equations.
+  
+    * SOLVE_helmholtz_axi_helio.cc     : Axisymmetric scalar helmholtz equation:
+                                         (\w^2+i\w\s)u + \b \div ( \mu \grad(\a u)) = s
+
+- Solvers : Files needed by Program (elliptic problems implementation)
+
+- Pre_Post_Treatment : utilities for solvers :
+
+    * write_index_helio.cc             : creates background model files given to solvers.
+    * compute_consistancy_error.cxx    : check if the equation is properly solved (median error).
+
+#######################################################################################################
+
+
+Targets to add to Makefile.rules.mk if not already there :
+
+# 2.5-D HELIO equation (axisymmetric domains)
+HELIO_helm_axi : lib $(LIB_SELDON) $(LIB_MONTJOIE) $(LIB_MONTJOIE_F)
+        @echo "Compiling recipe $@"
+        @$(VERBOSE)$(CC) $(FLAGS) src/Helio/Program/SOLVE_helmholtz_axi_helio.cc -c \
+          -o src/$@.o $(INCLUDE) $(AGRESSIVE_OPTIM)
+        @echo "Linking recipe $@"
+        @$(VERBOSE)$(CC) $(FLAGS) src/$@.o -o src/$@.x $(FLAGS) \
+          $(AGGRESSIVE_OPTIM) $(MPFR_LIB) $(LIB)
+        @$(VERBOSE)mv src/$@.x .
+        @echo "Target $@ succesfully compiled."
+
+# write index from modelS
+HELIO_write_index : lib $(LIB_SELDON) $(LIB_MONTJOIE) $(LIB_MONTJOIE_F)
+        @echo "Compiling recipe $@"
+	@$(VERBOSE)$(CC) $(FLAGS) src/Helio/Pre_Post_Treatment/write_index_helio.cc -c \
+	-o src/$@.o $(INCLUDE) $(AGRESSIVE_OPTIM)
+        @echo "Linking recipe $@"
+	@$(VERBOSE)$(CC) $(FLAGS) src/$@.o -o src/write_index_helio.x $(FLAGS) \
+	$(AGGRESSIVE_OPTIM) $(MPFR_LIB) $(LIB)
+	@$(VERBOSE)mv src/write_index_helio.x .
+        @echo "Target $@ succesfully compiled."

@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+
+import os, sys, network
+
+nb_args = len(sys.argv) - 1
+
+is_list = 0
+
+if nb_args != 1:
+    print "Usage: \"" + sys.argv[0] + " [program name]\"."
+    sys.exit(0)
+
+prog = sys.argv[1]
+
+# Network
+net = network.Network("all")
+
+for machine in net.hosts:
+    print machine.name
+    (s, out) = net.LaunchFG("ps -ef | grep -v grep | grep -v nkill | grep -v nice | grep " + prog, machine)
+    
+    for line in out.split('\n'):
+        if len(line) > 7:
+            if (line.split()[0] == "chabassi"):
+                net.LaunchFG("kill -9 " + line.split()[1], machine)

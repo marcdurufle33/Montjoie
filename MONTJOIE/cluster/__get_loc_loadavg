@@ -1,0 +1,6 @@
+#!/usr/bin/env python
+
+import network
+
+t = network.Host().LoadAverage()
+print t[0], t[1], t[2]

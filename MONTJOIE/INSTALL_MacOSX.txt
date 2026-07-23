@@ -1,0 +1,464 @@
+/---------------------------------------------\
+| INSTALLATION DE MONTJOIE EN MODE SEQUENTIEL |
+\---------------------------------------------/
+
+Librairies de base :
+brew install wget
+brew install make
+Ajouter dans le .zshrc : export PATH="/usr/local/opt/make/libexec/gnubin:$PATH"
+pour ce make devienne le make par défault
+brew install cmake
+brew install gcc
+Installe la dernière version de gcc disponible. gcc-11 à l'heure actuelle.
+
+Dans toute la suite, pensez à remplacer gcastera par votre session personnelle
+
+-----------------------------------------------------------------------
+
+Forçage des compilateurs non clang, ajouter ces lignes dans le .zshrc :
+export CC=gcc-11
+export CXX=g++-11
+export FC=gfortran
+Puis exécuter la commande :
+source .zshrc
+
+-----------------------------------------------------------------------
+
+Créer une clef ssh pour GitLab :
+Dans le répertoire de base /Users/gcastera/
+ssh-keygen -t rsa
+Le terminal affiche "Enter file in which to save the key (/Users/gcastera/.ssh/id_rsa):", appuyer juste sur enter sans rien renseigner
+Ensuite "Enter passphrase (empty for no passphrase):"
+et "Enter same passphrase again:"
+mettre éventuellement un mot de passe (optionnel)
+cat .ssh/id_rsa.pub
+Copier tout ce qui s'affiche
+aller sur GitLab >> en haut à droite Edit Profile >> dans la barre de gauche SSH Keys
+et créer une nouvelle clef en collant ce qui vient d'être copié
+
+-----------------------------------------------------------------------
+
+Se placer dans le répertoire où on souhaite cloner le dossier montjoie, par exemple dans /Users/gcastera/Documents/
+git clone git@gitlab.inria.fr:pianotouch/montjoie.git
+cd montjoie
+mkdir SOLVE-SEQ
+cd SOLVE-SEQ
+
+-----------------------------------------------------------------------
+
+Blas
+
+wget http://www.netlib.org/blas/blas.tgz
+tar zxvf blas.tgz
+cd BLAS-3.10.0
+make
+mv blas_LINUX.a libblas.a
+cd ..
+
+-----------------------------------------------------------------------
+
+CBlas
+
+wget http://www.netlib.org/blas/blast-forum/cblas.tgz
+tar zxvf cblas.tgz
+cd CBLAS
+Modifier le chemin ou est Blas (variable BLLIB) dans Makefile.in
+# BLLIB = /Users/gcastera/Documents/montjoie/SOLVE-SEQ/BLAS-3.10.0/libblas.a
+Et changer gcc en gcc-11 et ajouter l'option de compilation -fallow-argument-mismatch à la suite de gfortran
+make
+mv lib/cblas_LINUX.a libcblas.a
+ar rv libcblas_mkl.a src/zdotcsub.o src/zdotusub.o src/cdotcsub.o src/cdotusub.o
+cd ..
+
+-----------------------------------------------------------------------
+
+Lapack
+
+mkdir lapack-sandbox
+cd lapack-sandbox
+mkdir lapack-build
+git clone https://github.com/Reference-LAPACK/lapack-release.git
+cd lapack-build
+cmake ../lapack-release
+make
+mv lib/liblapack.a liblapack.a
+cd ../..
+
+-----------------------------------------------------------------------
+
+Metis
+
+wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz
+tar zxvf metis-5.1.0.tar.gz 
+cd metis-5.1.0
+make config
+make
+mv build/Darwin-x86_64/libmetis/libmetis.a .
+cd ..
+
+-----------------------------------------------------------------------
+
+Mumps
+
+wget http://graal.ens-lyon.fr/MUMPS/MUMPS_5.2.1.tar.gz
+tar zxvf MUMPS_5.2.1.tar.gz
+cd MUMPS_5.2.1
+cp Make.inc/Makefile.debian.SEQ Makefile.inc
+
+A modifier dans Makefile.inc :
+nano Makefile.inc
+
+Renseigner ISCOTCH à rien et LMETISDIR/IMETIS avec le répertoire où est installé Metis :
+# ISCOTCH =
+# LMETISDIR = /Users/gcastera/Documents/montjoie/Solve/metis-5.1.0
+# IMETIS = -I$(LMETISDIR)/include
+# ORDERINGSF = -Dmetis -Dpord
+
+make alllib
+cd ..
+
+-----------------------------------------------------------------------
+
+cd ../MONTJOIE
+cp Makefile.LINUX Makefile
+
+Dans le Makefile :
+USE_BLAS := YES
+OPTIMIZATION := FASTER
+STATIC_COMPILATION := YES
+USE_MUMPS := YES
+Mettre toutes les autres librairies à NO
+
+Vérifier les chemins:
+EXTERNAL := /Users/gcastera/Documents/montjoie/SOLVE-SEQ
+(le dossier où viennent d'être installées toutes les librairies)
+CHESELDON := /Users/gcastera/Documents/montjoie/SELDON
+(le dossier de SELDON qui est une librairie d'algèbre linéaire)
+puis les chemins de mumps, scotch et metis juste au dessous
+
+Dans la section ifeq($(USE_BLAS), YES), changer BLAS-3.8.0 en BLAS-3.10.0
+
+Dans la section ifeq($(USE_MUMPS), YES), -L$(HOME)/common/lib devient -L$(HOME)/Documents/montjoie/MONTJOIE
+
+Compiler montjoie (c'est très long):
+make -j4 acous2D
+Si vous avez plus de coeurs (x coeurs par exemple) vous pouvez taper -jx
+
+S'il n'y a pas d'erreur, c'est gagné !
+
+-----------------------------------------------------------------------
+
+Dernière étape avant de pouvoir lancer des simulations
+Ajouter la ligne suivante dans le .zshrc :
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/Users/gcastera/Documents/montjoie/MONTJOIE/lib
+Puis :
+source .zshrc
+
+-----------------------------------------------------------------------
+
+Pour que git ignore le dossier SOLVE-SEQ qu'on ne veut surtout pas commiter:
+cd Documents/montjoie/.git/info
+Ajouter ces lignes dans le fichier "exclude":
+/SOLVE-SEQ
+*Makefile*
+*.DS_Store
+
+Cette étape permet à git d'ignorer les fichiers spécifiés
+Si on créé par la suite un dossier /MONTJOIE/simulations il faudra le rajouter
+dans cette liste.
+
+-----------------------------------------------------------------------------------------------|
+FIN DE L'INSTALLATION SEQUENTIELLE
+-----------------------------------------------------------------------------------------------|
+
+
+
+/--------------------------------------------\
+| INSTALLATION DE MONTJOIE EN MODE PARALLELE |
+\--------------------------------------------/
+
+Librairies de base :
+brew install wget
+brew install make
+Ajouter dans le .zshrc : export PATH="/usr/local/opt/make/libexec/gnubin:$PATH"
+pour ce make devienne le make par défaut
+brew install cmake
+brew install gcc
+Installe la dernière version de gcc disponible. gcc-11 à l'heure actuelle.
+
+Dans toute la suite, pensez à remplacer gcastera par votre session personnelle
+
+-----------------------------------------------------------------------
+
+Forçage des compilateurs non clang, ajouter ces lignes dans le .zshrc :
+export CC=gcc-11
+export CXX=g++-11
+export FC=gfortran
+Puis exécuter la commande :
+source .zshrc
+
+-----------------------------------------------------------------------
+
+Installer une librairie MPI:
+
+Il est conseillé (par openmpi.org) d'installer dans /usr/local/
+
+cd /usr/local
+sudo wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.3.tar.bz2
+sudo tar jxvf openmpi-4.1.3.tar.bz2
+cd openmpi-4.1.3
+sudo mkdir build
+cd build
+sudo ../configure CC=gcc-11 CXX=g++-11 FC=gfortran
+sudo make -j4 all
+sudo make install
+
+-----------------------------------------------------------------------
+
+Créer une clef ssh pour GitLab :
+Dans le répertoire de base /Users/gcastera/
+ssh-keygen -t rsa
+Le terminal affiche "Enter file in which to save the key (/Users/gcastera/.ssh/id_rsa):", appuyer juste sur enter sans rien renseigner
+Ensuite "Enter passphrase (empty for no passphrase):"
+et "Enter same passphrase again:"
+mettre éventuellement un mot de passe (optionnel)
+cat .ssh/id_rsa.pub
+Copier tout ce qui s'affiche
+aller sur GitLab >> en haut à droite Edit Profile >> dans la barre de gauche SSH Keys
+et créer une nouvelle clef en collant ce qui vient d'être copié
+
+-----------------------------------------------------------------------
+
+Se placer dans le répertoire où on souhaite cloner le dossier montjoie, par exemple dans /Users/gcastera/Documents/
+git clone git@gitlab.inria.fr:pianotouch/montjoie.git
+cd montjoie
+mkdir SOLVE-PAR
+cd SOLVE-PAR
+
+-----------------------------------------------------------------------
+
+Blas
+
+wget http://www.netlib.org/blas/blas.tgz
+tar zxvf blas.tgz
+cd BLAS-3.10.0
+make
+mv blas_LINUX.a libblas.a
+cd ..
+
+-----------------------------------------------------------------------
+
+CBlas
+
+wget http://www.netlib.org/blas/blast-forum/cblas.tgz
+tar zxvf cblas.tgz
+cd CBLAS
+Modifier le chemin ou est Blas (variable BLLIB) dans Makefile.in
+# BLLIB = /Users/gcastera/Documents/montjoie/SOLVE-PAR/BLAS-3.10.0/libblas.a
+Et changer gcc en gcc-11 et ajouter l'option de compilation -fallow-argument-mismatch à la suite de gfortran
+make
+mv lib/cblas_LINUX.a libcblas.a
+ar rv libcblas_mkl.a src/zdotcsub.o src/zdotusub.o src/cdotcsub.o src/cdotusub.o
+cd ..
+
+-----------------------------------------------------------------------
+
+Lapack
+
+mkdir lapack-sandbox
+cd lapack-sandbox
+mkdir lapack-build
+git clone https://github.com/Reference-LAPACK/lapack-release.git
+cd lapack-build
+cmake ../lapack-release
+make
+mv lib/liblapack.a liblapack.a
+cd ../..
+
+-----------------------------------------------------------------------
+
+Metis
+
+wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz
+tar zxvf metis-5.1.0.tar.gz 
+cd metis-5.1.0
+make config
+make
+mv build/Darwin-x86_64/libmetis/libmetis.a .
+cd ..
+
+-----------------------------------------------------------------------
+
+Scotch
+
+wget https://gforge.inria.fr/frs/download.php/file/34618/scotch_6.0.4.tar.gz
+tar zxvf scotch_6.0.4.tar.gz
+cd scotch_6.0.4/src
+cp Make.inc/Makefile.inc.i686_mac_darwin10 Makefile.inc
+Remplacer gcc par mpicc dans le Makefile.inc
+make scotch ptscotch esmumps ptesmumps
+cd ../..
+
+-----------------------------------------------------------------------
+
+ParMetis
+
+wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/parmetis-4.0.3.tar.gz
+tar zxvf parmetis-4.0.3.tar.gz
+cd parmetis-4.0.3
+make config
+make
+mv build/Darwin-x86_64/libparmetis/libparmetis.a .
+cd ..
+
+-----------------------------------------------------------------------
+
+Mumps
+
+wget http://graal.ens-lyon.fr/MUMPS/MUMPS_5.2.1.tar.gz
+tar zxvf MUMPS_5.2.1.tar.gz
+cd MUMPS_5.2.1
+cp Make.inc/Makefile.debian.PAR Makefile.inc
+
+A modifier dans Makefile.inc :
+
+// LSCOTCHDIR = /Users/gcastera/Documents/montjoie/SOLVE-PAR/scotch_6.0.4
+// ISCOTCH = -I$(LSCOTCHDIR)/include
+// LMETISDIR = /Users/gcastera/Documents/montjoie/SOLVE-PAR/parmetis-4.0.3
+// IMETIS    = -I$(LMETISDIR)/include -I$(LMETISDIR)/metis/include
+// ORDERINGSF = -Dscotch -Dmetis -Dpord -Dptscotch -Dparmetis
+Ajouter l'option -fallow-argument-mismatch aux compilateurs fortran
+
+make alllib
+cd ..
+
+-----------------------------------------------------------------------
+
+Blacs
+
+wget http://www.netlib.org/blacs/mpiblacs.tgz
+wget http://www.netlib.org/blacs/mpiblacs-patch03.tgz
+tar zxvf mpiblacs.tgz
+tar zxvf mpiblacs-patch03.tgz
+cd BLACS
+cp BMAKES/Bmake.MPI-LINUX Bmake.inc
+
+A modifier dans Bmake.inc :
+// BTOPdir contient le répertoire ou est BLACS
+//  	MPIdir = /usr/local/openmpi-4.1.3
+   	MPILIBdir =
+	MPIINCdir = $(MPIdir)/build/ompi/include
+   	MPILIB =
+// Remplacer TRANSCOMM = -DUseMpich par TRANSCOMM = -DUseMpi3
+// remplacer F77 = g77 par F77 = mpif77 et mettre CC = mpicc
+
+make mpi
+cd LIB
+ar xv blacsCinit_MPI-LINUX-0.a
+ar xv blacs_MPI-LINUX-0.a
+ar rv libblacs.a *.o *.C
+rm *.o *.C
+mv libblacs.a ../
+cd ../..
+
+-----------------------------------------------------------------------
+
+Scalapack
+
+wget http://www.netlib.org/scalapack/scalapack-2.1.0.tgz
+tar zxvf scalapack-2.1.0.tgz
+cd scalapack-2.1.0
+cp SLmake.inc.example SLmake.inc
+Ajouter l'option -fallow-argument-mismatch aux compilateurs fortran dans SLmake.inc
+make lib
+cd ..
+
+-----------------------------------------------------------------------
+
+Arpack/Parpack
+
+wget https://www.math.u-bordeaux.fr/~durufle/parpack.tar.bz2
+tar jxvf parpack.tar.bz2
+cd Parpack
+Dans ARmake.inc mettre le bon chemin home vers le dossier Parpack
+Et ajouter l'option -fallow-argument-mismatch aux compilateurs fortran
+make lib plib
+cd ..
+
+-----------------------------------------------------------------------
+
+cd ../MONTJOIE
+cp Makefile.LINUX Makefile
+
+Dans le Makefile :
+USE_BLAS := YES
+OPTIMIZATION := FASTER
+STATIC_COMPILATION := YES
+USE_MUMPS := YES
+USE_ARPACK := YES
+USE_OPENMP := YES
+USE_MPI := YES
+USE_SCOTCH := YES
+Mettre toutes les autres librairies à NO
+
+Vérifier les chemins:
+EXTERNAL := /Users/gcastera/Documents/montjoie/SOLVE-PAR
+CHESELDON := /Users/gcastera/Documents/montjoie/SELDON
+CHEMUMPS_PAR = $(EXTERNAL)/MUMPS_5.2.1
+CHESCOTCH = $(EXTERNAL)/scotch_6.0.4
+CHEMETIS = $(EXTERNAL)/metis-5.1.0
+
+Dans la section des compilateurs
+# used compilers
+ifeq ($(USE_MPI),YES)
+Enlever l'option -lrt à la variable LIB
+
+
+Dans la section ifeq($(USE_BLAS), YES), changer BLAS-3.8.0 en BLAS-3.10.0
+et mettre le bon chemin pour $(EXTERNAL)/lapack-sandbox/lapack-build/liblapack.a
+
+Dans la section ifeq ($(USE_SCALAPACK),YES), mettre la bonne version scalapack-2.1.0
+
+Dans la section ifeq ($(USE_ARPACK),YES), mettre le bon chemin vers Parpack (et non PARPACK) :
+# if arparck is needed
+ifeq ($(USE_ARPACK),YES)
+   FLAGS := $(FLAGS) -DSELDON_WITH_ARPACK
+   ifeq ($(USE_MPI),YES)
+      LIB := -L$(EXTERNAL)/Parpack -lparpack -larpack $(LIB)
+   else
+      LIB := -L$(EXTERNAL)/Parpack -larpack $(LIB)
+   endif
+endif
+
+Dans la section ifeq($(USE_MUMPS), YES), -L$(HOME)/common/lib devient -L$(HOME)/Documents/montjoie/MONTJOIE
+
+Compiler montjoie (c'est très long):
+make -j4 helm2D
+Si vous avez plus de coeurs (x coeurs par exemple) vous pouvez taper -jx
+
+S'il n'y a pas d'erreur, c'est gagné !
+
+-----------------------------------------------------------------------
+
+Dernière étape avant de pouvoir lancer des simulations
+Ajouter la ligne suivante dans le .zshrc :
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/Users/gcastera/Documents/montjoie/MONTJOIE/lib
+Puis :
+source .zshrc
+
+-----------------------------------------------------------------------
+
+Pour que git ignore le dossier SOLVE-PAR qu'on ne veut surtout pas commiter:
+cd Documents/montjoie/.git/info
+Ajouter ces lignes dans le fichier "exclude":
+/SOLVE-PAR
+*Makefile*
+*.DS_Store
+
+Cette étape permet à git d'ignorer les fichiers spécifiés
+Si on créé par la suite un dossier /MONTJOIE/simulations il faudra le rajouter
+dans cette liste.
+
+-----------------------------------------------------------------------------------------------|
+FIN DE L'INSTALLATION PARALLELE
+-----------------------------------------------------------------------------------------------|

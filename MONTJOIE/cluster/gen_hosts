@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+
+import os, sys, network, math
+
+# Network
+net = network.Network("all")
+
+# on ouvre le fichier pour ecrire la liste des noeuds
+fid = open('mpd.hosts','w')
+for machine in net.hosts:
+    (s, out) = net.LaunchFG("__get_loc_loadavg", machine)    
+    chaine = out.split()[0]
+    moy = float(chaine)
+    nproc = 0
+    if (abs(moy) < 0.5):
+        nproc = 4
+    elif (abs(moy-1.0) < 0.5):
+        nproc = 3
+    elif (abs(moy-2.0) < 0.5):
+        nproc = 2
+    elif (abs(moy-3.0) < 0.5):
+        nproc = 1
+    
+    if (nproc > 0):
+        fid.write(machine.name+":"+str(nproc)+'\n');
+
+fid.close()

@@ -1,0 +1,2 @@
+pexec /cvos/shared/apps/mpich/ge/gcc/64/1.2.7/sbin/cleanipcs
+pkilluser

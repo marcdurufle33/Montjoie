@@ -1,0 +1,103 @@
+# put YES if you want to use Blas and Lapack, NO other
+USE_BLAS := NO
+
+STATIC_COMPILATION := YES
+
+# optimization mode : FASTER for fast execution, TESTER to debug
+OPTIMIZATION := FASTER
+
+# use of verbosity
+USE_VERBOSE := YES
+
+FLAGS := -DMONTJOIE_USE_REAL_TIMING -Wall -Wextra -Wno-strict-overflow -Wno-unused-parameter -Wno-unknown-pragmas -ftemplate-depth-5000 -Woverloaded-virtual
+
+# always compiling with openmp, without metis
+FLAGS := -fopenmp $(FLAGS) -DMONTJOIE_WITHOUT_METIS
+
+# default file to compile
+LSTBIN = src/Program/Unit/physical_indices_test.cc
+
+# default executable
+BIN = src/test.x
+
+# directory where external libraries are installed
+EXTERNAL := /home/durufle/Solve
+
+# directory where Seldon is installed
+CHESELDON := ../SELDON
+
+# directories where files .h and . hxx are sought
+INCLUDE := -Isrc -I$(CHESELDON)
+
+# user compiler
+CC = g++
+FCC = gfortran
+LIB := -lrt -lgfortran
+
+# included libraries
+LIB := lib/Bessel.o lib/i1mach.o lib/d1mach.o lib/etime.o $(LIB)
+
+# all warnings except for deprecated functions
+FLAGS := $(FLAGS) -Wall -Wno-deprecated -fno-strict-overflow
+
+# if Blas and Lapack are needed
+ifeq ($(USE_BLAS),YES)
+  # user-compiled Blas/Lapack
+  LIB := $(LIB) $(EXTERNAL)/lapack-3.5.0/liblapack.a $(EXTERNAL)/CBLAS/libcblas.a $(EXTERNAL)/BLAS-3.5.0/libblas.a -lgfortran
+
+  FLAGS := $(FLAGS) -DSELDON_WITH_CBLAS -DSELDON_WITH_LAPACK
+endif
+
+FLAGS_LIB := $(FLAGS) -fPIC
+FLAGS_OBJ := $(FLAGS) -fPIC
+SEPARED_COMPIL := NO
+
+ifeq ($(OPTIMIZATION),NO)
+  # options for debug mode
+  AGRESSIVE_OPTIM = -g
+  FLAGS := $(FLAGS) -DSELDON_DEBUG_LEVEL_4
+else ifeq ($(OPTIMIZATION),PROF)
+  AGRESSIVE_OPTIM = -pg -O3
+else ifeq ($(OPTIMIZATION),FAST)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY
+  SELD_SUFFIX := _Sopt
+  MONT_SUFFIX := _opt
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1 -DNDEBUG
+else ifeq ($(OPTIMIZATION),FASTER)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY -DMONTJOIE_WITH_FAST_LIBRARY
+  SELD_SUFFIX := _Sopt
+  MONT_SUFFIX := _opt
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1 -DNDEBUG
+else ifeq ($(OPTIMIZATION),TEST)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY
+  SELD_SUFFIX := _Sdebug
+  MONT_SUFFIX := _debug
+  AGRESSIVE_OPTIM = -O0 -DSELDON_DEBUG_LEVEL_4 -g
+else ifeq ($(OPTIMIZATION),TESTER)
+  SEPARED_COMPIL := YES
+  FLAGS := $(FLAGS) -DSELDON_WITH_COMPILED_LIBRARY -DMONTJOIE_WITH_FAST_LIBRARY
+  SELD_SUFFIX := _Sdebug
+  MONT_SUFFIX := _debug
+  AGRESSIVE_OPTIM = -O0 -DSELDON_DEBUG_LEVEL_4 -g
+else
+  # option for optimization mode
+  AGRESSIVE_OPTIM = -O3 -DSELDON_DEBUG_LEVEL_1 -DNDEBUG
+endif
+
+ifeq ($(SEPARED_COMPIL),YES)
+  ifeq ($(USE_MPFR),YES)
+    MONT_SUFFIX := $(MONT_SUFFIX)_mpfr
+    SELD_SUFFIX := $(SELD_SUFFIX)_mpfr
+  endif
+  LIB_MONTJOIE_STATIC := lib/libmontjoie$(MONT_SUFFIX).a
+  LIB_SELDON_STATIC := lib/libseldon$(SELD_SUFFIX).a
+  LIB_MONTJOIE := lib/libmontjoie$(MONT_SUFFIX).so
+  LIB_SELDON := lib/libseldon$(SELD_SUFFIX).so
+endif
+
+# now lists of all targets
+
+include Makefile.mesh.mk
