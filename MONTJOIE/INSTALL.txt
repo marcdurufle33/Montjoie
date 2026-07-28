@@ -1,10 +1,9 @@
-// basic packages for compilation and usage of svn
-sudo apt-get install make cmake
-sudo apt-get install gfortran g++
-sudo apt-get install subversion ssh
+// basic packages for compilation
+sudo apt install make cmake
+sudo apt install gfortran g++
 
-For a compilation/execution in parallel, install a MPI library:
-sudo apt-get install libopenmpi-dev
+// For a compilation/execution in parallel, install a MPI library:
+sudo apt install libopenmpi-dev
 
 We assume that montjoie is located in ~/montjoie/MONTJOIE and external libraries in ~/Solve
 

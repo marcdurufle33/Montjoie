@@ -24,10 +24,12 @@ int main(int argc, char **argv)
       string type_element, type_equation;
       getElement_Equation(file_name_data, type_element, type_equation);
 
-#ifdef MONTJOIE_WITH_REAL_TIMING      
+#ifdef MONTJOIE_WITH_REAL_TIMING
+#ifdef SELDON_WITH_MPI
       RealTimer chrono;
       chrono.Reset(0);
       chrono.Start(0);
+#endif
 #endif
       
       if ((!type_equation.compare("ACOUSTIC_DG")) || (!type_equation.compare("ACOUSTIC_HDG"))
@@ -54,11 +56,13 @@ int main(int argc, char **argv)
 	}
 
 #ifdef MONTJOIE_WITH_REAL_TIMING      
+#ifdef SELDON_WITH_MPI
       chrono.Stop(0);
       int rank_proc; MPI_Comm_rank(MPI_COMM_WORLD, &rank_proc);
 
       if (rank_proc == 0)
         cout << "Simulation lasted " << chrono.GetSeconds(0) << " s" << endl;
+#endif
 #endif
     }
   else

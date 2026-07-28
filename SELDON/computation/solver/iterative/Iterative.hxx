@@ -184,6 +184,11 @@ namespace Seldon
 	    Iteration<typename ClassComplexType<T>::Treal>& outer);
 
   template<class T, class Vector1>
+  int DQGmres(const VirtualMatrix<T>& A, Vector1& x, const Vector1& b,
+              Preconditioner_Base<T>& M,
+              Iteration<typename ClassComplexType<T>::Treal>& outer);
+
+  template<class T, class Vector1>
   int Lsqr(const VirtualMatrix<T>& A, Vector1& x, const Vector1& b,
 	   Preconditioner_Base<T>& M,
 	   Iteration<typename ClassComplexType<T>::Treal>& iter);
@@ -267,6 +272,10 @@ namespace Seldon
   template <class Titer, class MatrixSparse, class Vector1, class Preconditioner>
   int Gmres(const MatrixSparse& A, Vector1& x, const Vector1& b,
 	    Preconditioner& M, Iteration<Titer> & outer);
+
+  template <class Titer, class MatrixSparse, class Vector1, class Preconditioner>
+  int DQGmres(const MatrixSparse& A, Vector1& x, const Vector1& b,
+              Preconditioner& M, Iteration<Titer> & outer);
 
   template <class Titer, class Matrix1, class Vector1, class Preconditioner>
   int Lsqr(const Matrix1& A, Vector1& x, const Vector1& b,

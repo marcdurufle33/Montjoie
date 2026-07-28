@@ -92,6 +92,12 @@ namespace Seldon
   SELDON_EXTERN template int Gmres(const VirtualMatrix<Complex_wp >&, Vector<Complex_wp >&, const Vector<Complex_wp >&,
 				   Preconditioner_Base<Complex_wp >&, Iteration<Real_wp>&);
 
+  SELDON_EXTERN template int DQGmres(const VirtualMatrix<Real_wp>&, Vector<Real_wp>&, const Vector<Real_wp>&,
+                                     Preconditioner_Base<Real_wp>&, Iteration<Real_wp>&);
+  
+  SELDON_EXTERN template int DQGmres(const VirtualMatrix<Complex_wp >&, Vector<Complex_wp >&, const Vector<Complex_wp >&,
+                                     Preconditioner_Base<Complex_wp >&, Iteration<Real_wp>&);
+
   SELDON_EXTERN template int Lsqr(const VirtualMatrix<Real_wp>&, Vector<Real_wp>&, const Vector<Real_wp>&,
 				  Preconditioner_Base<Real_wp>&, Iteration<Real_wp>&);
   
