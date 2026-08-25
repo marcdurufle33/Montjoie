@@ -105,7 +105,7 @@ namespace Montjoie
     enum { QMR, TFQMR, GMRES, CG, CGNE, LSQR, CGS,
 	   BICG, BICGSTAB, BICGCR, MINRES, GCR, SYMMLQ,
 	   COCG, QMR_SYM, BICGSTABL, QCGS, PRECOND,
-           JACOBI, GAUSS_SEIDEL_RELAX};
+           JACOBI, GAUSS_SEIDEL_RELAX, DQGMRES};
     
     All_IterativeSolver();
     All_IterativeSolver(Preconditioner_Base<T>&);

@@ -566,7 +566,9 @@ namespace Montjoie
 	  type_solver = TFQMR;
 	else if (!parameters(0).compare("GMRES"))
 	  type_solver = GMRES;
-	else if (!parameters(0).compare("CG"))
+        else if (!parameters(0).compare("DQGMRES"))
+	  type_solver = DQGMRES;
+        else if (!parameters(0).compare("CG"))
 	  type_solver = CG;
  	else if (!parameters(0).compare("CGNE"))
 	  type_solver = CGNE;
@@ -730,6 +732,7 @@ namespace Montjoie
       {
       case PRECOND: M.Solve(A, b, x); return 0;
       case GMRES: ierr = Gmres(A, x, b, M, iter); break;
+      case DQGMRES: ierr = DQGmres(A, x, b, M, iter); break;
       case QMR: ierr = Qmr(A, x, b, M, iter); break;
       case COCG: ierr = CoCg(A, x, b, M, iter); break;
       case BICGCR: ierr = BiCgcr(A, x, b, M, iter); break;
@@ -769,6 +772,7 @@ namespace Montjoie
     switch (type_solver)
       {
       case GMRES: return m+4;
+      case DQGMRES: return 2*m+4;
       case QMR: return 10;
       case COCG: return 4;
       case BICGCR: return 6;
